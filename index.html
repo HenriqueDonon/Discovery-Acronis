@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discovery · Backup & Proteção de Dados — Acronis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --bg:   #0a0e1a; --bg2: #0f1628; --bg3: #141d35; --bg4: #1a2540;
+    --border: rgba(37,99,235,0.12); --border2: rgba(37,99,235,0.22);
+    --text: #f0f4ff; --text2: #8b9dc3; --text3: #4a5980;
+    --accent: #2563eb; --accent2: #60a5fa; --accent3: #93c5fd;
+    --green: #34c97e; --green-bg: rgba(52,201,126,0.1);
+    --amber: #f5a623; --amber-bg: rgba(245,166,35,0.1);
+    --red: #ff5f5f;   --red-bg: rgba(255,95,95,0.1);
+    --r: 8px; --r2: 12px; --r3: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    --wm-color: #ffffff; --wm-opacity: 0.055;
+  }
+  .light {
+    --bg: #f0f4ff; --bg2: #e8edf8; --bg3: #dde4f5; --bg4: #d0d9ef;
+    --border: rgba(37,99,235,0.15); --border2: rgba(37,99,235,0.3);
+    --text: #0f1628; --text2: #3a4a70; --text3: #6b7fa8;
+    --green-bg: rgba(52,201,126,0.12); --amber-bg: rgba(245,166,35,0.12); --red-bg: rgba(255,95,95,0.12);
+    --shadow: 0 4px 24px rgba(0,0,0,0.1);
+    --wm-color: #001942; --wm-opacity: 0.08;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background .2s, color .2s;
+  }
+
+  /* Subtle gradient backdrop (login motif) */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -260px; right: -180px;
+    width: 680px; height: 680px;
+    background: radial-gradient(circle, rgba(37,99,235,0.16), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── WATERMARK ── */
+  #watermark {
+    position: fixed;
+    bottom: 36px; right: 40px;
+    width: 200px;
+    pointer-events: none;
+    z-index: 0;
+    user-select: none;
+    color: var(--wm-color);
+    opacity: var(--wm-opacity);
+    transition: opacity .3s, color .3s;
+  }
+  #watermark svg { width: 100%; height: auto; display: block; }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  .header { margin-bottom: 24px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .header-icon {
+    width: 68px; height: 68px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(37,99,235,0.12);
+    border: 1px solid var(--border2);
+    border-radius: 15px;
+    flex-shrink: 0;
+  }
+  .header-icon svg { width: 42px; height: 42px; }
+
+  h1 {
+    font-size: clamp(1.45rem, 4vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    color: var(--text);
+  }
+  h1 .brand { color: var(--accent2); }
+
+  .header-subtitle {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text2);
+    letter-spacing: 0.01em;
+  }
+
+  .theme-toggle {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 7px 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: .15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .theme-toggle:hover { color: var(--text2); border-color: var(--border2); }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text2);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+  }
+  .badge b { color: var(--accent2); font-weight: 600; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap {
+    position: sticky; top: 0;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(10px);
+    z-index: 5;
+    padding: 16px 0 14px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .progress-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono);
+    font-size: 0.74rem; color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .progress-meta b { color: var(--text); }
+  .progress-bar {
+    height: 5px; background: var(--bg4);
+    border-radius: 99px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+  }
+  .dots { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--bg4);
+    border: 1px solid var(--border);
+    transition: .3s; cursor: pointer;
+  }
+  .dot.active { background: var(--accent2); border-color: var(--accent2); box-shadow: 0 0 8px rgba(96,165,250,0.4); }
+  .dot.done { background: var(--accent); border-color: var(--accent); }
+
+  /* ── STEP ── */
+  .step { display: none; animation: fade .45s ease; }
+  .step.active { display: block; }
+  @keyframes fade { from { opacity:0; transform: translateY(12px);} to {opacity:1; transform:none;} }
+
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 0.72rem; letter-spacing: 0.08em;
+    color: var(--accent2); text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-title { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .section-desc { color: var(--text2); font-size: 0.92rem; margin-bottom: 26px; }
+
+  .field { margin-bottom: 22px; animation: fade .4s ease; }
+  .field-label { display: block; font-size: 0.95rem; font-weight: 600; margin-bottom: 9px; color: var(--text); }
+  .field-label .req { color: var(--accent2); margin-left: 3px; }
+
+  input[type=text], input[type=tel], input[type=email],
+  input[type=number], textarea {
+    width: 100%;
+    background: var(--bg2);
+    border: 1.5px solid var(--border2);
+    border-radius: 9px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    transition: .2s;
+    -moz-appearance: textfield;
+  }
+  textarea { resize: vertical; min-height: 78px; line-height: 1.5; }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+  input::placeholder, textarea::placeholder { color: var(--text3); }
+
+  .input-suffix { position: relative; }
+  .input-suffix .suffix {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono); font-size: 0.8rem;
+    color: var(--text3); pointer-events: none;
+  }
+  .input-suffix input { padding-right: 46px; }
+
+  /* options */
+  .options { display: grid; gap: 10px; }
+  .options.cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px){ .options.cols-2 { grid-template-columns: 1fr; } }
+
+  .opt {
+    display: flex; align-items: center; gap: 11px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: .15s;
+    font-size: 0.92rem;
+    user-select: none;
+  }
+  .opt:hover { border-color: var(--border2); background: var(--bg3); }
+  .opt.sel { border-color: var(--accent); background: rgba(37,99,235,0.12); }
+  .opt .marker {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid var(--text3);
+    display: flex; align-items: center; justify-content: center;
+    transition: .15s;
+  }
+  .opt[data-multi="0"] .marker { border-radius: 50%; }
+  .opt[data-multi="1"] .marker { border-radius: 5px; }
+  .opt.sel .marker { border-color: var(--accent); background: var(--accent); }
+  .opt .marker svg { width: 11px; height: 11px; opacity: 0; transition:.15s; }
+  .opt.sel .marker svg { opacity: 1; }
+  .opt[data-multi="0"] .marker::after {
+    content:''; width:7px; height:7px; border-radius:50%; background:#fff;
+    transform: scale(0); transition:.15s;
+  }
+  .opt[data-multi="0"].sel .marker::after { transform: scale(1); }
+
+  /* ── NAV ── */
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 34px; }
+  button.btn {
+    font-family: var(--font);
+    font-weight: 600; font-size: 0.92rem;
+    border: 1px solid transparent; border-radius: 9px;
+    padding: 12px 26px; cursor: pointer;
+    transition: .2s; letter-spacing: 0.01em;
+  }
+  .btn-next {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-next:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 8px 22px rgba(37,99,235,0.32); }
+  .btn-back {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-back:hover { color: var(--text); border-color: var(--accent2); }
+  .btn-back.hidden { visibility: hidden; }
+  .btn-ghost { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+  .btn-ghost:hover { border-color: var(--accent2); }
+
+  .err {
+    color: #fca5a5; font-family: var(--mono);
+    font-size: 0.78rem; margin-top: 12px; display: none;
+  }
+  .err.show { display: block; }
+
+  /* ── WELCOME ── */
+  .welcome .lead {
+    font-size: 1.04rem; line-height: 1.6; color: var(--text2);
+    margin-bottom: 26px; max-width: 62ch;
+  }
+  .info-grid {
+    display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    gap: 12px;
+  }
+  .info-card { background: var(--bg2); border:1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .info-card .ic { font-size:1.1rem; margin-bottom:8px; }
+  .info-card h4 { font-size:0.9rem; margin-bottom:4px; }
+  .info-card p { font-size:0.78rem; color:var(--text3); font-family: var(--mono); }
+
+  /* ── SUMMARY ── */
+  .summary-head { text-align:center; margin-bottom: 30px; }
+  .summary-icon {
+    width:64px; height:64px; margin:0 auto 16px;
+    border-radius:50%; background: rgba(37,99,235,0.12);
+    border:1px solid var(--accent2);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .summary-icon svg { width:30px; height:30px; }
+  .summary-head h2 { font-size:1.65rem; font-weight:700; margin-bottom:6px; }
+  .summary-head p { color: var(--text2); font-size:0.92rem; }
+
+  .sum-section {
+    background: var(--bg2); border:1px solid var(--border);
+    border-radius: 12px; margin-bottom: 14px; overflow: hidden;
+  }
+  .sum-section-title {
+    font-family: var(--mono); font-size:0.72rem;
+    text-transform:uppercase; letter-spacing:0.08em; color:var(--accent2);
+    padding: 14px 18px 8px;
+  }
+  .sum-row {
+    display:flex; justify-content:space-between; gap:16px;
+    padding: 9px 18px; border-top:1px solid var(--border);
+    font-size:0.88rem;
+  }
+  .sum-row .k { color: var(--text2); flex-shrink:0; max-width:55%; }
+  .sum-row .v { text-align:right; font-family: var(--mono); color:var(--text); word-break: break-word; }
+  .sum-row .v.empty { color:var(--text3); font-style:italic; }
+
+  .sum-actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+  .sum-actions .btn { flex:1; min-width:160px; }
+
+  .footer-brand {
+    margin-top: 46px; text-align:center;
+    font-family: var(--mono); font-size:0.72rem;
+    color: var(--text3); letter-spacing:0.04em;
+  }
+  .footer-brand b { color: var(--text2); }
+
+  @media print {
+    body::after, #watermark, .progress-wrap, .nav, .sum-actions, .badges, .theme-toggle { display:none !important; }
+    .step:not(#step-summary) { display:none !important; }
+    #step-summary { display:block !important; }
+    body { background:#fff; color:#111; }
+    .sum-section { border-color:#ddd; }
+    .sum-row { border-color:#eee; }
+    .sum-row .v, .summary-head p, .sum-row .k { color:#333; }
+  }
+</style>
+</head>
+<body>
+
+<!-- WATERMARK (Ativa Security wordmark) -->
+<div id="watermark" aria-hidden="true">
+  <svg viewBox="0 0 283 295" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M62.5469 231.129H39.3574L35.4521 239H22.9189L44.6855 197.404H57.2188L78.9854 239H66.4521L62.5469 231.129ZM43.3838 223.016H58.5811L51.0127 207.697L43.3838 223.016ZM106.686 206.456V239H95.4541V206.456H77.8047V197.404H124.365V206.456H106.686ZM131.812 239V197.404H143.044V239H131.812ZM184.004 239H170.926L149.886 197.404H162.419L177.556 228.707L192.662 197.404H205.195L184.004 239ZM243.643 231.129H220.453L216.548 239H204.015L225.781 197.404H238.314L260.081 239H247.548L243.643 231.129ZM224.479 223.016H239.677L232.108 207.697L224.479 223.016ZM31.4375 257.555C30.8281 257.258 30.125 256.945 29.3281 256.617C28.5312 256.273 27.6172 255.969 26.5859 255.703C25.5703 255.438 24.4219 255.219 23.1406 255.047C21.8594 254.859 20.4375 254.766 18.875 254.766C16.9844 254.766 15.2969 254.875 13.8125 255.094C12.3438 255.312 11.0938 255.656 10.0625 256.125C9.04688 256.578 8.26562 257.156 7.71875 257.859C7.1875 258.562 6.92188 259.398 6.92188 260.367C6.92188 261.18 7.17188 261.891 7.67188 262.5C8.1875 263.109 8.875 263.648 9.73438 264.117C10.6094 264.586 11.625 265.016 12.7812 265.406C13.9531 265.781 15.1875 266.141 16.4844 266.484C17.7969 266.812 19.1406 267.148 20.5156 267.492C21.9062 267.836 23.25 268.211 24.5469 268.617C25.8594 269.008 27.0938 269.453 28.25 269.953C29.4219 270.438 30.4375 271.008 31.2969 271.664C32.1719 272.32 32.8594 273.07 33.3594 273.914C33.875 274.758 34.1328 275.734 34.1328 276.844C34.1328 278.047 33.9062 279.102 33.4531 280.008C33 280.898 32.3828 281.672 31.6016 282.328C30.8359 282.969 29.9297 283.508 28.8828 283.945C27.8516 284.367 26.7422 284.703 25.5547 284.953C24.3828 285.203 23.1641 285.375 21.8984 285.469C20.6484 285.578 19.4141 285.633 18.1953 285.633C15.3984 285.633 12.8594 285.43 10.5781 285.023C8.3125 284.617 6.14844 284.062 4.08594 283.359V279.773C6.21094 281.039 8.45312 281.906 10.8125 282.375C13.1875 282.844 15.6797 283.078 18.2891 283.078C20.1328 283.078 21.8359 282.969 23.3984 282.75C24.9609 282.531 26.3125 282.188 27.4531 281.719C28.5938 281.234 29.4766 280.609 30.1016 279.844C30.7422 279.078 31.0625 278.141 31.0625 277.031C31.0625 276.141 30.8047 275.359 30.2891 274.688C29.7891 274.016 29.1016 273.43 28.2266 272.93C27.3672 272.414 26.3516 271.961 25.1797 271.57C24.0234 271.18 22.7969 270.82 21.5 270.492C20.2031 270.148 18.8594 269.82 17.4688 269.508C16.0938 269.18 14.7578 268.828 13.4609 268.453C12.1641 268.078 10.9297 267.656 9.75781 267.188C8.60156 266.719 7.58594 266.172 6.71094 265.547C5.85156 264.906 5.16406 264.172 4.64844 263.344C4.14844 262.516 3.89844 261.555 3.89844 260.461C3.89844 259.383 4.10156 258.43 4.50781 257.602C4.91406 256.758 5.46875 256.031 6.17188 255.422C6.89062 254.812 7.72656 254.305 8.67969 253.898C9.63281 253.477 10.6484 253.148 11.7266 252.914C12.8203 252.664 13.9531 252.484 15.125 252.375C16.2969 252.266 17.4531 252.211 18.5938 252.211C19.8438 252.211 21.0234 252.266 22.1328 252.375C23.2578 252.484 24.3359 252.633 25.3672 252.82C26.4141 252.992 27.4297 253.195 28.4141 253.43C29.4141 253.664 30.4219 253.914 31.4375 254.18V257.555ZM43.2031 285V252.797H70.0391V255.539H46.3906V266.625H68.8438V269.344H46.3906V282.258H70.3906V285H43.2031ZM112.461 282.445C111.336 282.914 110.219 283.344 109.109 283.734C108.016 284.125 106.875 284.461 105.688 284.742C104.5 285.023 103.25 285.242 101.938 285.398C100.625 285.555 99.1953 285.633 97.6484 285.633C95.7422 285.633 93.9062 285.477 92.1406 285.164C90.3906 284.852 88.7578 284.383 87.2422 283.758C85.7266 283.133 84.3516 282.359 83.1172 281.438C81.8828 280.5 80.8203 279.414 79.9297 278.18C79.0547 276.945 78.375 275.555 77.8906 274.008C77.4219 272.461 77.1875 270.766 77.1875 268.922C77.1875 267.078 77.4219 265.383 77.8906 263.836C78.375 262.289 79.0547 260.898 79.9297 259.664C80.8203 258.43 81.8828 257.352 83.1172 256.43C84.3516 255.492 85.7266 254.711 87.2422 254.086C88.7578 253.461 90.3906 252.992 92.1406 252.68C93.8906 252.367 95.7266 252.211 97.6484 252.211C99.1953 252.211 100.625 252.289 101.938 252.445C103.25 252.602 104.5 252.82 105.688 253.102C106.875 253.383 108.016 253.719 109.109 254.109C110.219 254.484 111.336 254.906 112.461 255.375V258.891C111.57 258.328 110.617 257.797 109.602 257.297C108.586 256.797 107.484 256.359 106.297 255.984C105.125 255.609 103.867 255.312 102.523 255.094C101.18 254.875 99.7422 254.766 98.2109 254.766C95.1172 254.766 92.4375 255.102 90.1719 255.773C87.9062 256.445 86.0312 257.398 84.5469 258.633C83.0781 259.852 81.9844 261.336 81.2656 263.086C80.5625 264.82 80.2109 266.766 80.2109 268.922C80.2109 271.078 80.5625 273.023 81.2656 274.758C81.9844 276.492 83.0781 277.977 84.5469 279.211C86.0312 280.43 87.9062 281.375 90.1719 282.047C92.4375 282.703 95.1172 283.031 98.2109 283.031C99.7422 283.031 101.188 282.922 102.547 282.703C103.922 282.484 105.203 282.188 106.391 281.812C107.594 281.438 108.695 281.008 109.695 280.523C110.711 280.023 111.633 279.5 112.461 278.953V282.445ZM153.383 274.875C153.383 276.484 153.039 277.953 152.352 279.281C151.68 280.594 150.664 281.727 149.305 282.68C147.961 283.617 146.273 284.344 144.242 284.859C142.211 285.375 139.844 285.633 137.141 285.633C134.438 285.633 132.07 285.375 130.039 284.859C128.008 284.344 126.312 283.617 124.953 282.68C123.594 281.727 122.57 280.594 121.883 279.281C121.211 277.953 120.875 276.484 120.875 274.875V252.797H123.805V275.109C123.805 276.188 124.086 277.211 124.648 278.18C125.227 279.133 126.078 279.969 127.203 280.688C128.328 281.406 129.719 281.977 131.375 282.398C133.031 282.82 134.953 283.031 137.141 283.031C139.312 283.031 141.227 282.82 142.883 282.398C144.539 281.977 145.93 281.406 147.055 280.688C148.18 279.969 149.023 279.133 149.586 278.18C150.164 277.211 150.453 276.188 150.453 275.109V252.797H153.383V274.875ZM166.883 271.219V285H163.953V252.797H179.984C182.438 252.797 184.539 252.992 186.289 253.383C188.039 253.758 189.469 254.336 190.578 255.117C191.703 255.883 192.523 256.844 193.039 258C193.555 259.156 193.812 260.508 193.812 262.055C193.812 264.461 193.18 266.391 191.914 267.844C190.648 269.281 188.609 270.266 185.797 270.797L196.789 285H193.109L182.727 271.125C182.289 271.156 181.844 271.18 181.391 271.195C180.938 271.211 180.469 271.219 179.984 271.219H166.883ZM190.789 262.055C190.789 260.68 190.547 259.57 190.062 258.727C189.578 257.867 188.789 257.203 187.695 256.734C186.602 256.266 185.164 255.953 183.383 255.797C181.617 255.625 179.445 255.539 176.867 255.539H166.883V268.477H176.773C179.352 268.477 181.531 268.406 183.312 268.266C185.094 268.109 186.539 267.805 187.648 267.352C188.758 266.883 189.555 266.234 190.039 265.406C190.539 264.562 190.789 263.445 190.789 262.055ZM203.938 285V252.797H206.867V285H203.938ZM230.773 255.469V285H227.867V255.469H213.219V252.797H245.422V255.469H230.773ZM266.117 271.359V285H263.188V271.359L248.07 252.797H251.562L264.664 268.922L277.719 252.797H281.234L266.117 271.359Z" fill="currentColor"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M128.306 1.87723C119.136 4.80845 105.957 15.2005 102.12 24.3456C96.729 34.6826 97.0323 52.8286 102.765 62.9729L107.089 70.6249L90.2075 99.9177L73.3263 129.21L78.584 128.705C83.6504 128.216 84.8719 126.422 112.231 79.2469C127.845 52.325 140.986 30.3068 141.432 30.3165C142.475 30.3425 173.953 85.2826 172.925 85.2826C172.498 85.2826 169.437 84.1425 166.119 82.7498C162.802 81.357 153.907 79.5092 146.352 78.6428C138.797 77.778 131.132 76.7043 129.318 76.2557C127.153 75.7197 125.329 76.557 124.009 78.6946C121.165 83.2955 125.336 85.1611 142.395 86.9183C166.09 89.3588 181.996 99.4108 193.344 119.113C198.117 127.4 199.734 128.976 203.483 128.99C205.938 129 207.944 128.529 207.944 127.942C207.944 126.248 142.344 12.5025 141.338 12.4523C140.84 12.4264 134.27 23.3189 126.737 36.6567C119.205 49.9946 112.567 60.9259 111.985 60.9486C110.01 61.0263 107.364 50.8254 107.364 43.1329C107.364 33.4324 110.515 25.957 117.377 19.3722C132.091 5.25218 153.712 6.01171 166.997 21.1164C169.888 24.4039 172.255 27.7821 172.255 28.6226C172.255 29.4971 173.992 29.3611 176.31 28.3068C181.821 25.7999 181.448 23.8063 173.859 15.2005C162.38 2.18169 144.091 -3.16738 128.306 1.87723ZM78.232 146.118C111.217 179.831 167.018 180.729 202.07 148.108L212 138.869L206.58 138.796C202.646 138.744 199.311 140.307 194.413 144.498C176.164 160.115 149.373 167.269 126.617 162.604C111.779 159.561 98.2036 153.209 88.7053 144.862C83.6325 140.403 80.255 138.725 76.3599 138.725H71L78.232 146.118Z" fill="currentColor"/>
+  </svg>
+</div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">
+        <div class="header-icon">
+          <!-- Ativa "A" mark -->
+          <svg viewBox="0 0 283 295" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M128.306 1.877C119.136 4.808 105.957 15.2 102.12 24.346C96.729 34.683 97.032 52.829 102.765 62.973L107.089 70.625L90.208 99.918L73.326 129.21L78.584 128.705C83.65 128.216 84.872 126.422 112.231 79.247C127.845 52.325 140.986 30.307 141.432 30.317C142.475 30.343 173.953 85.283 172.925 85.283C172.498 85.283 169.437 84.143 166.119 82.75C162.802 81.357 153.907 79.509 146.352 78.643C138.797 77.778 131.132 76.704 129.318 76.256C127.153 75.72 125.329 76.557 124.009 78.695C121.165 83.296 125.336 85.161 142.395 86.918C166.09 89.359 181.996 99.411 193.344 119.113C198.117 127.4 199.734 128.976 203.483 128.99C205.938 129 207.944 128.529 207.944 127.942C207.944 126.248 142.344 12.503 141.338 12.452C140.84 12.426 134.27 23.319 126.737 36.657C119.205 49.995 112.567 60.926 111.985 60.949C110.01 61.026 107.364 50.825 107.364 43.133C107.364 33.432 110.515 25.957 117.377 19.372C132.091 5.252 153.712 6.012 166.997 21.116C169.888 24.404 172.255 27.782 172.255 28.623C172.255 29.497 173.992 29.361 176.31 28.307C181.821 25.8 181.448 23.806 173.859 15.201C162.38 2.182 144.091-3.167 128.306 1.877ZM78.232 146.118C111.217 179.831 167.018 180.729 202.07 148.108L212 138.869L206.58 138.796C202.646 138.744 199.311 140.307 194.413 144.498C176.164 160.115 149.373 167.269 126.617 162.604C111.779 159.561 98.204 153.209 88.705 144.862C83.633 140.403 80.255 138.725 76.36 138.725H71L78.232 146.118Z" fill="#60a5fa"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Discovery · <span class="brand">Backup & Proteção de Dados</span></h1>
+        </div>
+      </div>
+      <div class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">☀️</span><span id="theme-label">Modo claro</span>
+      </div>
+    </div>
+    <div class="header-subtitle">// Levantamento de ambiente para dimensionamento da solução Acronis Cyber Protect</div>
+    <div class="badges">
+      <div class="badge"><b>Acronis</b> Cyber Protect</div>
+      <div class="badge">Backup</div>
+      <div class="badge">Disaster Recovery</div>
+      <div class="badge">Anti-Ransomware</div>
+      <div class="badge">Inventário</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progressWrap" style="display:none">
+    <div class="progress-meta">
+      <span id="progLabel">Seção 1 de 10</span>
+      <b id="progPct">0%</b>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- WELCOME -->
+  <div class="step active" id="step-welcome">
+    <div class="welcome">
+      <div class="section-tag">Discovery Técnico</div>
+      <div class="section-title">Vamos conhecer o seu ambiente</div>
+      <p class="lead">Este questionário leva cerca de 5 minutos e nos permite dimensionar com precisão a solução de backup e proteção de dados ideal para a sua operação — sem suposições. Ao final, você poderá copiar, imprimir ou enviar o resumo das respostas.</p>
+      <div class="info-grid">
+        <div class="info-card"><div class="ic">🗄️</div><h4>Mapeamento de ambiente</h4><p>servidores, VMs, estações e nuvem</p></div>
+        <div class="info-card"><div class="ic">🛡️</div><h4>Proteção & retenção</h4><p>volume, RPO/RTO e compliance</p></div>
+        <div class="info-card"><div class="ic">📊</div><h4>Dimensionamento</h4><p>proposta sob medida e sem excessos</p></div>
+      </div>
+      <div class="nav">
+        <button class="btn btn-back hidden">Voltar</button>
+        <button class="btn btn-next" onclick="start()">Iniciar discovery →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="steps"></div>
+
+  <!-- SUMMARY -->
+  <div class="step" id="step-summary">
+    <div class="summary-head">
+      <div class="summary-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+      <h2>Discovery concluído</h2>
+      <p id="summarySub">Confira o resumo do ambiente levantado</p>
+    </div>
+    <div id="summaryBody"></div>
+    <div class="sum-actions">
+      <button class="btn btn-ghost" onclick="copyResumo(event)">⧉ Copiar resumo</button>
+      <button class="btn btn-ghost" onclick="window.print()">⎙ Imprimir / PDF</button>
+      <button class="btn btn-next" onclick="enviarEmail()">✉ Enviar resumo</button>
+    </div>
+    <div class="nav">
+      <button class="btn btn-back" onclick="goto(SECTIONS.length-1)">← Revisar respostas</button>
+      <span></span>
+    </div>
+    <div class="footer-brand">Discovery <b>Acronis Cyber Protect</b> · Ativa Security · documento gerado localmente, nada é enviado automaticamente</div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  THEME
+// ─────────────────────────────────────────────
+(function(){
+  var saved='dark';
+  try{ saved=localStorage.getItem('acronis_discovery_theme')||'dark'; }catch(e){}
+  if(saved==='light') document.body.classList.add('light');
+  document.addEventListener('DOMContentLoaded',syncThemeUI);
+})();
+function syncThemeUI(){
+  var isLight=document.body.classList.contains('light');
+  var ic=document.getElementById('theme-icon'), lb=document.getElementById('theme-label');
+  if(ic) ic.textContent=isLight?'🌙':'☀️';
+  if(lb) lb.textContent=isLight?'Modo escuro':'Modo claro';
+}
+function toggleTheme(){
+  var isLight=document.body.classList.toggle('light');
+  try{ localStorage.setItem('acronis_discovery_theme', isLight?'light':'dark'); }catch(e){}
+  syncThemeUI();
+}
+
+// ─────────────────────────────────────────────
+//  SCHEMA
+// ─────────────────────────────────────────────
+var SECTIONS = [
+  {
+    tag: "01 · Empresa", title: "Informações gerais", desc: "Dados de contato e contexto da organização.",
+    fields: [
+      { id:"razao", label:"Razão social", type:"text", req:true, ph:"Ex.: Transportadora Andrade Ltda." },
+      { id:"responsavel", label:"Nome do responsável pelo projeto", type:"text", req:true, ph:"Nome completo" },
+      { id:"cargo", label:"Cargo", type:"text", ph:"Ex.: Gerente de TI" },
+      { id:"telefone", label:"Telefone", type:"tel", mask:"phone", ph:"(11) 90000-0000" },
+      { id:"email", label:"E-mail", type:"email", req:true, ph:"nome@empresa.com.br" },
+      { id:"segmento", label:"Segmento de atuação", type:"text", ph:"Ex.: Logística" },
+      { id:"colaboradores", label:"Número total de colaboradores", type:"number", ph:"0" },
+      { id:"filiais", label:"Quantidade de unidades / filiais", type:"number", ph:"0" }
+    ]
+  },
+  {
+    tag: "02 · Ambiente de TI", title: "Infraestrutura", desc: "Servidores, virtualização, estações e dispositivos móveis.",
+    fields: [
+      { id:"serv_fisicos", label:"Quantos servidores físicos existem atualmente?", type:"radio",
+        options:["Nenhum","1 a 5","6 a 10","Mais de 10"] },
+      { id:"serv_qtd", label:"Quantidade exata de servidores físicos", type:"number", ph:"0",
+        showIf:{ field:"serv_fisicos", notEquals:"Nenhum" } },
+      { id:"virtualizado", label:"Possui ambiente virtualizado?", type:"radio", options:["Sim","Não"] },
+      { id:"hypervisor", label:"Qual plataforma de virtualização?", type:"checkbox", cols2:true,
+        options:["VMware","Hyper-V","Proxmox","Nutanix","Outros"],
+        showIf:{ field:"virtualizado", equals:"Sim" } },
+      { id:"hypervisor_outros", label:"Outras plataformas de virtualização", type:"text", ph:"Especifique",
+        showIf:{ field:"hypervisor", contains:"Outros" } },
+      { id:"hosts_qtd", label:"Quantidade de hosts", type:"number", ph:"0",
+        showIf:{ field:"virtualizado", equals:"Sim" } },
+      { id:"vms_qtd", label:"Quantidade de máquinas virtuais", type:"number", ph:"0",
+        showIf:{ field:"virtualizado", equals:"Sim" } },
+      { id:"estacoes", label:"Quantidade de computadores / notebooks", type:"radio",
+        options:["Até 50","51 a 100","101 a 500","Acima de 500"] },
+      { id:"estacoes_qtd", label:"Quantidade exata de estações", type:"number", ph:"0" },
+      { id:"sos", label:"Sistemas operacionais utilizados", type:"checkbox", cols2:true,
+        options:["Windows","Linux","macOS"] },
+      { id:"sos_versoes", label:"Detalhar versões dos sistemas operacionais", type:"textarea",
+        ph:"Ex.: Windows Server 2019/2022, Windows 11, Ubuntu 22.04..." },
+      { id:"moveis", label:"Possui dispositivos móveis corporativos?", type:"radio", options:["Sim","Não"] },
+      { id:"android_qtd", label:"Quantidade de dispositivos Android", type:"number", ph:"0",
+        showIf:{ field:"moveis", equals:"Sim" } },
+      { id:"ios_qtd", label:"Quantidade de dispositivos iOS", type:"number", ph:"0",
+        showIf:{ field:"moveis", equals:"Sim" } }
+    ]
+  },
+  {
+    tag: "03 · Inventário", title: "Inventário de ativos", desc: "O que deseja inventariar e monitorar.",
+    fields: [
+      { id:"inv_ativos", label:"Deseja realizar inventário de quais ativos?", type:"checkbox", cols2:true,
+        options:["Computadores","Notebooks","Servidores","Máquinas Virtuais","Smartphones","Equipamentos de Rede","Impressoras","Outros"] },
+      { id:"inv_outros", label:"Outros ativos a inventariar", type:"text", ph:"Quais?",
+        showIf:{ field:"inv_ativos", contains:"Outros" } },
+      { id:"inv_software", label:"Necessita inventário de software instalado?", type:"radio", options:["Sim","Não"] },
+      { id:"inv_nao_autorizado", label:"Necessita monitorar softwares não autorizados?", type:"radio", options:["Sim","Não"] },
+      { id:"inv_conformidade", label:"Necessita relatórios de conformidade / licenciamento?", type:"radio", options:["Sim","Não"] }
+    ]
+  },
+  {
+    tag: "04 · Backup", title: "Backup e proteção de dados", desc: "Escopo, volume e aplicações críticas.",
+    fields: [
+      { id:"escopo", label:"Quais ambientes precisam ser protegidos?", type:"checkbox", cols2:true,
+        options:["Servidores físicos","Máquinas virtuais","Estações de trabalho","Microsoft 365","Google Workspace","Banco de Dados","NAS","Arquivos compartilhados","Outros"] },
+      { id:"escopo_outros", label:"Outros ambientes a proteger", type:"text", ph:"Especifique",
+        showIf:{ field:"escopo", contains:"Outros" } },
+      { id:"volume", label:"Volume total de dados a serem protegidos", type:"radio", cols2:true,
+        options:["Até 1 TB","1 a 5 TB","5 a 10 TB","10 a 20 TB","Acima de 20 TB"] },
+      { id:"volume_tb", label:"Volume estimado", type:"number", suffix:"TB", ph:"0" },
+      { id:"crescimento", label:"Crescimento mensal estimado dos dados", type:"radio", cols2:true,
+        options:["Até 5%","5% a 10%","10% a 20%","Acima de 20%"] },
+      { id:"app_criticas", label:"Quais aplicações são consideradas críticas?", type:"checkbox", cols2:true,
+        options:["ERP","Banco de Dados SQL","Banco de Dados Oracle","Exchange","Microsoft 365","Sistema Hospitalar","Sistema Financeiro","Outros"] },
+      { id:"app_outros", label:"Outras aplicações críticas", type:"text", ph:"Especifique",
+        showIf:{ field:"app_criticas", contains:"Outros" } }
+    ]
+  },
+  {
+    tag: "05 · Retenção", title: "Política de retenção", desc: "Frequência e tempo de guarda dos backups.",
+    fields: [
+      { id:"freq_completo", label:"Frequência do backup completo", type:"radio", cols2:true,
+        options:["Diário","Semanal","Mensal"] },
+      { id:"freq_incremental", label:"Frequência do backup incremental", type:"radio", cols2:true,
+        options:["Horário","A cada 4 horas","Diário","Outro"] },
+      { id:"freq_incremental_outro", label:"Outra frequência incremental", type:"text", ph:"Especifique",
+        showIf:{ field:"freq_incremental", equals:"Outro" } },
+      { id:"retencao", label:"Por quanto tempo deseja manter os backups?", type:"radio", cols2:true,
+        options:["30 dias","90 dias","180 dias","1 ano","Mais de 1 ano"] },
+      { id:"retencao_detalhe", label:"Detalhar política de retenção", type:"textarea",
+        ph:"Ex.: 30 dias diário, 12 meses mensal, 7 anos anual (GFS)..." }
+    ]
+  },
+  {
+    tag: "06 · Disaster Recovery", title: "Recuperação de desastres", desc: "Objetivos de continuidade do negócio.",
+    fields: [
+      { id:"rto", label:"Tempo máximo aceitável para recuperação de um sistema (RTO)", type:"radio", cols2:true,
+        options:["Até 15 minutos","Até 1 hora","Até 4 horas","Até 24 horas","Acima de 24 horas"] },
+      { id:"rpo", label:"Perda máxima aceitável de dados (RPO)", type:"radio", cols2:true,
+        options:["15 minutos","1 hora","4 horas","24 horas"] },
+      { id:"dr_plano", label:"Existe plano de Disaster Recovery (DR)?", type:"radio", options:["Sim","Não"] },
+      { id:"dr_instantaneo", label:"Deseja recuperação instantânea de servidores em caso de falha?", type:"radio", options:["Sim","Não"] }
+    ]
+  },
+  {
+    tag: "07 · Armazenamento", title: "Armazenamento dos backups", desc: "Onde os backups deverão residir.",
+    fields: [
+      { id:"destino", label:"Onde os backups deverão ser armazenados?", type:"checkbox", cols2:true,
+        options:["Storage Local","NAS","Servidor dedicado","Nuvem Acronis","Azure","AWS","Google Cloud","Ambiente Híbrido"] }
+    ]
+  },
+  {
+    tag: "08 · Compliance", title: "Segurança e compliance", desc: "Requisitos regulatórios e proteção.",
+    fields: [
+      { id:"regulatorio", label:"Existe exigência regulatória para retenção dos dados?", type:"checkbox", cols2:true,
+        options:["LGPD","ISO 27001","HIPAA","PCI-DSS","Outros"] },
+      { id:"regulatorio_outros", label:"Outras exigências regulatórias", type:"text", ph:"Quais?",
+        showIf:{ field:"regulatorio", contains:"Outros" } },
+      { id:"ransomware", label:"Deseja proteção contra ransomware integrada ao backup?", type:"radio", options:["Sim","Não"] },
+      { id:"cripto", label:"Deseja criptografia dos backups?", type:"radio", options:["Sim","Não"] }
+    ]
+  },
+  {
+    tag: "09 · Cenário atual", title: "Solução atual", desc: "O que já existe hoje e suas dores.",
+    fields: [
+      { id:"sol_atual", label:"Possui solução de backup atualmente?", type:"radio", options:["Sim","Não"] },
+      { id:"sol_atual_qual", label:"Qual solução?", type:"text", ph:"Ex.: Veeam, Bacula, robocopy...",
+        showIf:{ field:"sol_atual", equals:"Sim" } },
+      { id:"dificuldades", label:"Principais dificuldades na solução atual", type:"checkbox", cols2:true,
+        options:["Falhas de backup","Lentidão de restauração","Alto custo","Falta de monitoramento","Falta de relatórios","Complexidade operacional","Outros"],
+        showIf:{ field:"sol_atual", equals:"Sim" } },
+      { id:"dificuldades_detalhe", label:"Detalhar dificuldades", type:"textarea", ph:"Descreva os principais problemas enfrentados",
+        showIf:{ field:"sol_atual", equals:"Sim" } }
+    ]
+  },
+  {
+    tag: "10 · Objetivos", title: "Objetivos do projeto", desc: "O que motiva a adoção do Acronis.",
+    fields: [
+      { id:"objetivos", label:"Principais objetivos da contratação da solução Acronis", type:"checkbox", cols2:true,
+        options:["Proteção contra ransomware","Centralização do gerenciamento","Inventário automatizado","Redução de custos","Adequação à LGPD","Disaster Recovery","Backup Microsoft 365","Maior visibilidade dos ativos","Outros"] },
+      { id:"objetivos_detalhe", label:"Detalhar objetivos", type:"textarea", ph:"Conte o que é mais importante para o projeto" },
+      { id:"complementar", label:"Necessidade específica ou requisito não abordado", type:"textarea",
+        ph:"Qualquer informação adicional relevante" },
+      { id:"data_levantamento", label:"Data do levantamento", type:"text", ph:"DD/MM/AAAA" }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────────
+//  STATE & RENDER
+// ─────────────────────────────────────────────
+var state = {};
+var current = 0;
+var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+function buildSteps(){
+  var html = '';
+  SECTIONS.forEach(function(sec, idx){
+    html += '<div class="step" id="step-'+idx+'">';
+    html += '<div class="section-tag">'+sec.tag+'</div>';
+    html += '<div class="section-title">'+sec.title+'</div>';
+    html += '<div class="section-desc">'+sec.desc+'</div>';
+    sec.fields.forEach(function(f){ html += renderField(f); });
+    html += '<div class="err" id="err-'+idx+'">Preencha os campos obrigatórios destacados antes de continuar.</div>';
+    html += '<div class="nav">';
+    html += '<button class="btn btn-back" onclick="prev()">← Voltar</button>';
+    var last = idx === SECTIONS.length-1;
+    html += '<button class="btn btn-next" onclick="next()">'+(last?'Finalizar →':'Continuar →')+'</button>';
+    html += '</div></div>';
+  });
+  document.getElementById('steps').innerHTML = html;
+}
+
+function renderField(f){
+  var wrap = '<div class="field" data-field="'+f.id+'" '+(f.showIf?'style="display:none"':'')+'>';
+  var req = f.req ? '<span class="req">*</span>' : '';
+  wrap += '<label class="field-label">'+f.label+req+'</label>';
+  if (f.type==='radio' || f.type==='checkbox'){
+    var multi = f.type==='checkbox' ? 1 : 0;
+    wrap += '<div class="options '+(f.cols2?'cols-2':'')+'">';
+    f.options.forEach(function(opt){
+      wrap += '<div class="opt" data-multi="'+multi+'" onclick="pick(\''+f.id+'\',\''+escq(opt)+'\','+multi+')">'
+            + '<span class="marker">'+CHECK_SVG+'</span>'
+            + '<span>'+opt+'</span></div>';
+    });
+    wrap += '</div>';
+  } else if (f.type==='textarea'){
+    wrap += '<textarea oninput="setVal(\''+f.id+'\',this.value)" placeholder="'+(f.ph||'')+'"></textarea>';
+  } else {
+    var handler = 'oninput="setVal(\''+f.id+'\',this.value)"';
+    var extra = '';
+    if (f.mask==='phone'){ handler = 'oninput="onPhoneInput(\''+f.id+'\',this)" onkeypress="return phoneKey(event)"'; extra = ' inputmode="numeric" maxlength="15"'; }
+    var input = '<input type="'+f.type+'" '+handler+extra+' placeholder="'+(f.ph||'')+'">';
+    if (f.suffix){
+      wrap += '<div class="input-suffix">'+input+'<span class="suffix">'+f.suffix+'</span></div>';
+    } else { wrap += input; }
+  }
+  wrap += '</div>';
+  return wrap;
+}
+
+function escq(s){ return s.replace(/'/g,"\\'"); }
+
+function setVal(id, v){ state[id]=v; refreshConditionals(); }
+
+// Telefone: aceita apenas dígitos e formata como (XX) XXXXX-XXXX
+function phoneKey(e){
+  var ch = String.fromCharCode(e.which || e.keyCode);
+  if (e.ctrlKey || e.metaKey) return true;
+  return /[0-9]/.test(ch);
+}
+function maskPhone(v){
+  var d = (v||'').replace(/\D/g,'').slice(0,11);
+  var p = '';
+  if (d.length > 0) p = '(' + d.slice(0,2);
+  if (d.length >= 2) p += ') ';
+  if (d.length > 2){
+    if (d.length <= 6)       p += d.slice(2);
+    else if (d.length <= 10) p += d.slice(2,6) + '-' + d.slice(6);
+    else                     p += d.slice(2,7) + '-' + d.slice(7);
+  }
+  return p;
+}
+function onPhoneInput(id, el){
+  var masked = maskPhone(el.value);
+  el.value = masked;
+  state[id] = masked;
+}
+
+function pick(id, val, multi){
+  if (multi){
+    var arr = state[id] || [];
+    var i = arr.indexOf(val);
+    if (i>-1) arr.splice(i,1); else arr.push(val);
+    state[id]=arr;
+  } else {
+    state[id] = (state[id]===val) ? '' : val;
+  }
+  syncOptions(id, multi);
+  refreshConditionals();
+}
+
+function syncOptions(id, multi){
+  var field = document.querySelector('[data-field="'+id+'"]');
+  if(!field) return;
+  var opts = field.querySelectorAll('.opt');
+  opts.forEach(function(o){
+    var label = o.querySelector('span:last-child').textContent;
+    var sel = multi ? (state[id]||[]).indexOf(label)>-1 : state[id]===label;
+    o.classList.toggle('sel', sel);
+  });
+}
+
+function refreshConditionals(){
+  SECTIONS.forEach(function(sec){
+    sec.fields.forEach(function(f){
+      if(!f.showIf) return;
+      var el = document.querySelector('[data-field="'+f.id+'"]');
+      if(!el) return;
+      el.style.display = condMet(f.showIf) ? '' : 'none';
+    });
+  });
+}
+function condMet(c){
+  var v = state[c.field];
+  if (c.equals!==undefined)    return v===c.equals;
+  if (c.notEquals!==undefined) return v && v!==c.notEquals;
+  if (c.contains!==undefined)  return Array.isArray(v) && v.indexOf(c.contains)>-1;
+  return true;
+}
+
+// ─────────────────────────────────────────────
+//  NAVIGATION
+// ─────────────────────────────────────────────
+function showStep(){
+  document.querySelectorAll('.step').forEach(function(s){ s.classList.remove('active'); });
+  var id;
+  if (current < 0) id='step-welcome';
+  else if (current >= SECTIONS.length) id='step-summary';
+  else id='step-'+current;
+  var el = document.getElementById(id);
+  if(el) el.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+  updateProgress();
+}
+
+function start(){ current=0; document.getElementById('progressWrap').style.display='block'; showStep(); }
+
+function next(){
+  if (!validate(current)) return;
+  current++;
+  if (current >= SECTIONS.length) buildSummary();
+  showStep();
+}
+function prev(){ current--; if(current<0) document.getElementById('progressWrap').style.display='none'; showStep(); }
+function goto(i){ current=i; showStep(); }
+
+function validate(i){
+  var sec = SECTIONS[i];
+  var ok = true, firstBad = null;
+  sec.fields.forEach(function(f){
+    if(!f.req) return;
+    if(f.showIf && !condMet(f.showIf)) return;
+    var v = state[f.id];
+    var bad = !v || (Array.isArray(v)&&!v.length);
+    if(f.type==='email' && v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) bad=true;
+    var el = document.querySelector('[data-field="'+f.id+'"] input, [data-field="'+f.id+'"] textarea');
+    if(el) el.style.borderColor = bad ? 'var(--red)' : '';
+    if(bad){ ok=false; if(!firstBad) firstBad=f.id; }
+  });
+  var err = document.getElementById('err-'+i);
+  if(err) err.classList.toggle('show', !ok);
+  return ok;
+}
+
+function updateProgress(){
+  var total = SECTIONS.length;
+  var done = current < 0 ? 0 : Math.min(current, total);
+  var pct = Math.round((done/total)*100);
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progPct').textContent = pct+'%';
+  if (current >= total) document.getElementById('progLabel').textContent = 'Resumo final';
+  else document.getElementById('progLabel').textContent = 'Seção '+(Math.max(current,0)+1)+' de '+total;
+  buildDots();
+}
+
+function buildDots(){
+  var d = document.getElementById('dots'); d.innerHTML='';
+  for (var i=0;i<SECTIONS.length;i++){
+    var dot = document.createElement('div');
+    dot.className='dot'+(i===current?' active':(i<current?' done':''));
+    (function(idx){ dot.onclick=function(){ if(idx<=current){ goto(idx);} }; })(i);
+    d.appendChild(dot);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  SUMMARY
+// ─────────────────────────────────────────────
+function fmtVal(v){
+  if (Array.isArray(v)) return v.length? v.join(', ') : '';
+  return v||'';
+}
+
+function buildSummary(){
+  var html='';
+  SECTIONS.forEach(function(sec){
+    var rows='';
+    sec.fields.forEach(function(f){
+      if(f.showIf && !condMet(f.showIf)) return;
+      var v = fmtVal(state[f.id]);
+      var suffix = (f.suffix && v) ? ' '+f.suffix : '';
+      rows += '<div class="sum-row"><span class="k">'+f.label+'</span>'
+            + '<span class="v'+(v?'':' empty')+'">'+(v? (v+suffix) : '—')+'</span></div>';
+    });
+    html += '<div class="sum-section"><div class="sum-section-title">'+sec.tag+' · '+sec.title+'</div>'+rows+'</div>';
+  });
+  document.getElementById('summaryBody').innerHTML = html;
+  var emp = state.razao || 'sua organização';
+  document.getElementById('summarySub').textContent = 'Ambiente levantado para '+emp;
+}
+
+function buildTextResumo(){
+  var L=[];
+  L.push('DISCOVERY · BACKUP & PROTEÇÃO DE DADOS (ACRONIS) — ATIVA SECURITY');
+  L.push('='.repeat(56));
+  SECTIONS.forEach(function(sec){
+    L.push('');
+    L.push('['+sec.tag.toUpperCase()+'] '+sec.title.toUpperCase());
+    sec.fields.forEach(function(f){
+      if(f.showIf && !condMet(f.showIf)) return;
+      var v = fmtVal(state[f.id]);
+      if(!v) return;
+      var suffix = f.suffix ? ' '+f.suffix : '';
+      L.push('  • '+f.label+': '+v+suffix);
+    });
+  });
+  L.push('');
+  L.push('='.repeat(56));
+  L.push('Gerado em '+new Date().toLocaleString('pt-BR'));
+  return L.join('\n');
+}
+
+function copyResumo(e){
+  var txt = buildTextResumo();
+  navigator.clipboard.writeText(txt).then(function(){
+    var b=e.currentTarget; b.textContent='✓ Copiado!';
+    setTimeout(function(){ b.textContent='⧉ Copiar resumo'; },2000);
+  }).catch(function(){
+    var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    var b=e.currentTarget; b.textContent='✓ Copiado!';
+    setTimeout(function(){ b.textContent='⧉ Copiar resumo'; },2000);
+  });
+}
+
+function enviarEmail(){
+  var emp = state.razao || 'cliente';
+  var subject = 'Discovery Acronis — '+emp;
+  var body = buildTextResumo();
+  window.location.href = 'mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+buildSteps();
+showStep();
+</script>
+</body>
+</html>
