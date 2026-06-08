@@ -360,8 +360,11 @@ body.light {
     <div style="padding:0 18px 6px">
       <div class="nav-group-label">Entrada</div>
     </div>
+    <div class="nav-item" onclick="gotoPanel('respostas')" data-panel="respostas">
+      <i class="ti ti-inbox"></i> Respostas recebidas
+    </div>
     <div class="nav-item" onclick="gotoPanel('inserir')" data-panel="inserir">
-      <i class="ti ti-forms"></i> Inserir respostas
+      <i class="ti ti-forms"></i> Inserir manual
     </div>
     <div class="nav-item" onclick="gotoPanel('export')" data-panel="export">
       <i class="ti ti-file-export"></i> Exportar relatório
@@ -371,12 +374,24 @@ body.light {
   <!-- MAIN CONTENT -->
   <main class="main" id="mainContent">
 
+    <!-- ── RESPOSTAS FIRESTORE ── -->
+    <div class="panel" id="panel-respostas">
+      <div class="section-header">
+        <div class="section-tag">firestore · tempo real</div>
+        <div class="section-title">Respostas recebidas do questionário</div>
+        <div class="section-sub">Clique em uma resposta para carregar os dados no dashboard automaticamente</div>
+      </div>
+      <div id="panel-respostas" style="padding:4px 0">
+        <div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:24px">⏳ Conectando ao Firestore...</div>
+      </div>
+    </div>
+
     <!-- ── OVERVIEW ── -->
     <div class="panel active" id="panel-overview">
       <div class="section-header">
         <div class="section-tag">visão geral</div>
         <div class="section-title">Diagnóstico do ambiente</div>
-        <div class="section-sub" id="overview-client-name">Preencha as respostas na aba "Inserir respostas" para gerar a análise</div>
+        <div class="section-sub" id="overview-client-name">Aguardando respostas do questionário via Firestore…</div>
       </div>
 
       <div class="grid-4" id="kpi-row">
@@ -1423,6 +1438,196 @@ function emailExport(){
   var body = document.getElementById('export-text').textContent;
   window.location.href = 'mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
 }
+</script>
+
+<!-- ── FIREBASE REALTIME ── -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, limit, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB6DF-tIMTpLk52fsGv70UJtxFbdhrX_tY",
+  authDomain: "discovery-acronis.firebaseapp.com",
+  projectId: "discovery-acronis",
+  storageBucket: "discovery-acronis.firebasestorage.app",
+  messagingSenderId: "460265914287",
+  appId: "1:460265914287:web:ff6578ba37f19fbff3f95a",
+  measurementId: "G-GFTVMXBF00"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── Mapear campos do questionário → campos do dashboard ──
+function mapearRespostas(data) {
+  return {
+    razao:         data.razao        || '',
+    responsavel:   data.responsavel  || '',
+    email:         data.email        || '',
+    segmento:      data.segmento     || '',
+    colaboradores: data.colaboradores|| '',
+    filiais:       data.filiais      || '',
+    // infraestrutura
+    servFaixa:     data.serv_fisicos || '',
+    servQtd:       data.serv_qtd     || '',
+    virt:          data.virtualizado || '',
+    hypervisor:    Array.isArray(data.hypervisor) ? data.hypervisor.join(', ') : (data.hypervisor || ''),
+    hosts:         data.hosts_qtd    || '',
+    vms:           data.vms_qtd      || '',
+    estacoesFaixa: data.estacoes     || '',
+    estacoesQtd:   data.estacoes_qtd || '',
+    sos:           Array.isArray(data.sos) ? data.sos : (data.sos ? [data.sos] : []),
+    moveis:        data.moveis       || '',
+    // backup
+    escopo:        Array.isArray(data.escopo)      ? data.escopo      : [],
+    volumeFaixa:   data.volume       || '',
+    volumeTb:      data.volume_tb    || '',
+    apps:          Array.isArray(data.app_criticas) ? data.app_criticas : [],
+    freqCompleto:  data.freq_completo || '',
+    freqInc:       data.freq_incremental || '',
+    retencao:      data.retencao     || '',
+    // DR
+    rto:           data.rto          || '',
+    rpo:           data.rpo          || '',
+    drPlano:       data.dr_plano     || '',
+    drInst:        data.dr_instantaneo || '',
+    // armazenamento
+    destino:       Array.isArray(data.destino) ? data.destino : [],
+    // compliance
+    regs:          Array.isArray(data.regulatorio) ? data.regulatorio : [],
+    ransomware:    data.ransomware   || '',
+    cripto:        data.cripto       || '',
+    // cenário atual
+    solAtual:      data.sol_atual    || '',
+    solQual:       data.sol_atual_qual || '',
+    dif:           Array.isArray(data.dificuldades) ? data.dificuldades : []
+  };
+}
+
+// ── Painel de respostas recentes ──
+function criarPainelRespostas(docs) {
+  var existing = document.getElementById('panel-respostas');
+  if (!existing) return; // só atualiza se o painel já existir no HTML
+
+  if (!docs.length) {
+    existing.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:24px">Nenhuma resposta recebida ainda.</div>';
+    return;
+  }
+
+  var html = '<div style="display:flex;flex-direction:column;gap:10px">';
+  docs.forEach(function(snap, i) {
+    var d = snap.data();
+    var ts = d.criadoEm ? new Date(d.criadoEm.seconds * 1000).toLocaleString('pt-BR') : '—';
+    var empresa = d.razao || '(sem nome)';
+    var isActive = (i === 0);
+    html += '<div class="card" style="cursor:pointer;'+(isActive?'border-color:var(--blue)':'')+'" onclick="carregarResposta(\''+snap.id+'\')" id="resp-card-'+snap.id+'">';
+    html += '<div class="card-body" style="padding:12px 16px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-weight:600;font-size:13px">'+empresa+'</span>';
+    html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">'+ts+'</span>';
+    html += '</div>';
+    if (d.segmento) html += '<div style="font-size:11px;color:var(--text2);margin-top:3px">'+d.segmento+'</div>';
+    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px">ID: '+snap.id+'</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  existing.innerHTML = html;
+}
+
+// ── Armazena snapshots para acesso por ID ──
+var _snapshotsCache = {};
+
+window.carregarResposta = function(docId) {
+  var data = _snapshotsCache[docId];
+  if (!data) return;
+
+  // Destaca card selecionado
+  document.querySelectorAll('[id^="resp-card-"]').forEach(function(c){ c.style.borderColor=''; });
+  var card = document.getElementById('resp-card-'+docId);
+  if (card) card.style.borderColor = 'var(--blue)';
+
+  // Preenche S global com os dados mapeados e recalcula
+  S = mapearRespostas(data);
+
+  var score = calcScore(S);
+  var tier = getTier(score);
+  var domains = getDomainScores(S);
+  var gaps = getGaps(S);
+  var recs = getRecommendations(S);
+  var ativos = (parseInt(S.servQtd)||0) + (parseInt(S.vms)||0);
+
+  document.getElementById('kpi-score').textContent = score;
+  var st = document.getElementById('kpi-score-tier');
+  st.textContent = tier.label; st.className = 'kpi-badge '+tier.cls;
+
+  var ativosEl = document.getElementById('kpi-ativos');
+  ativosEl.textContent = ativos || '—';
+  document.getElementById('kpi-ativos-sub').textContent = (parseInt(S.servQtd)||0)+' servidores + '+(parseInt(S.vms)||0)+' VMs';
+  var ativT = document.getElementById('kpi-ativos-tier');
+  ativT.textContent = ativos>50?'Grande porte':ativos>10?'Médio porte':'Pequeno porte';
+  ativT.className = 'kpi-badge '+(ativos>50?'badge-red':ativos>10?'badge-amber':'badge-green');
+
+  var volEl = document.getElementById('kpi-volume');
+  volEl.textContent = S.volumeTb || S.volumeFaixa || '—';
+  var volT = document.getElementById('kpi-volume-tier');
+  volT.textContent = S.volumeFaixa || '—'; volT.className = 'kpi-badge badge-blue';
+
+  document.getElementById('kpi-gaps').textContent = gaps.filter(function(g){return g.risk==='critical';}).length;
+  var gapT = document.getElementById('kpi-gaps-tier');
+  var critG = gaps.filter(function(g){return g.risk==='critical';}).length;
+  gapT.textContent = critG > 0 ? 'Ação urgente' : 'Controlado';
+  gapT.className = 'kpi-badge '+(critG>0?'badge-red':'badge-green');
+
+  var cn = document.getElementById('overview-client-name');
+  cn.textContent = S.razao ? 'Diagnóstico para: '+S.razao+(S.segmento?' · '+S.segmento:'') : 'Diagnóstico calculado';
+
+  document.getElementById('gauge-num').textContent = score;
+  var gt = document.getElementById('gauge-tier');
+  gt.textContent = tier.label; gt.className = 'kpi-badge '+tier.cls;
+  document.getElementById('gauge-comment').textContent = tier.comment;
+  renderGauge(score, tier.color);
+  renderDomainBars(domains);
+  renderAssetsChart();
+  renderSummaryTable();
+  renderMaturityCards(domains, score, tier);
+  renderRadar(domains);
+  renderGaps(gaps);
+  renderRecs(recs);
+  renderAmbienteTables();
+  renderBackupTables();
+  renderComplianceTables();
+  renderExport(score, tier, gaps, recs, domains);
+
+  gotoPanel('overview');
+};
+
+// ── Escuta as últimas 20 respostas em tempo real ──
+var q = query(collection(db, 'discoveries'), orderBy('criadoEm', 'desc'), limit(20));
+
+onSnapshot(q, function(snapshot) {
+  var docs = [];
+  snapshot.forEach(function(snap) {
+    _snapshotsCache[snap.id] = snap.data();
+    docs.push(snap);
+  });
+
+  // Atualiza contador no badge "ao vivo"
+  var liveEl = document.querySelector('.dot-live');
+  if (liveEl && liveEl.parentElement) {
+    var badge = liveEl.parentElement.querySelector('span:not(.dot-live)');
+    if (badge) badge.textContent = 'ao vivo · ' + docs.length + ' resposta' + (docs.length !== 1 ? 's' : '');
+  }
+
+  // Atualiza painel de respostas se existir
+  criarPainelRespostas(docs);
+
+  // Auto-carrega a mais recente se ainda não houver nada no S
+  if (docs.length > 0 && !S.razao) {
+    window.carregarResposta(docs[0].id);
+  }
+}, function(err) {
+  console.error('Firestore listener error:', err);
+});
 </script>
 </body>
 </html>
