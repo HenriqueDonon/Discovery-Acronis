@@ -446,7 +446,7 @@
       <button class="btn btn-back" onclick="goto(SECTIONS.length-1)">← Revisar respostas</button>
       <span></span>
     </div>
-    <div class="footer-brand">Discovery <b>Acronis Cyber Protect</b> · Ativa Security · documento gerado localmente, nada é enviado automaticamente</div>
+    <div class="footer-brand">Discovery <b>Acronis Cyber Protect</b> · Ativa Security · respostas enviadas automaticamente ao dashboard ao finalizar</div>
   </div>
 
 </div>
@@ -764,7 +764,15 @@ function start(){ current=0; document.getElementById('progressWrap').style.displ
 function next(){
   if (!validate(current)) return;
   current++;
-  if (current >= SECTIONS.length) buildSummary();
+  if (current >= SECTIONS.length) {
+    buildSummary();
+    // Salva automaticamente no Firestore ao finalizar
+    setTimeout(function(){
+      if (typeof window.salvarNoFirestore === 'function') {
+        window.salvarNoFirestore();
+      }
+    }, 800);
+  }
   showStep();
 }
 function prev(){ current--; if(current<0) document.getElementById('progressWrap').style.display='none'; showStep(); }
@@ -881,6 +889,62 @@ function enviarEmail(){
 // ─────────────────────────────────────────────
 buildSteps();
 showStep();
+</script>
+
+<!-- ── FIREBASE ── -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB6DF-tIMTpLk52fsGv70UJtxFbdhrX_tY",
+  authDomain: "discovery-acronis.firebaseapp.com",
+  projectId: "discovery-acronis",
+  storageBucket: "discovery-acronis.firebasestorage.app",
+  messagingSenderId: "460265914287",
+  appId: "1:460265914287:web:ff6578ba37f19fbff3f95a",
+  measurementId: "G-GFTVMXBF00"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Expõe a função de envio globalmente para ser chamada ao finalizar
+window.salvarNoFirestore = async function() {
+  try {
+    // Monta o payload flat com os campos do state global
+    const payload = Object.assign({}, state, {
+      criadoEm: serverTimestamp(),
+      _versao: '1.0'
+    });
+
+    const docRef = await addDoc(collection(db, "discoveries"), payload);
+
+    // Atualiza o rodapé para confirmar o envio
+    var footer = document.querySelector('.footer-brand');
+    if (footer) {
+      footer.innerHTML = '✅ Respostas enviadas ao dashboard com sucesso · <b>ID:</b> ' + docRef.id + ' · Ativa Security';
+      footer.style.color = 'var(--green)';
+    }
+
+    // Mostra banner de confirmação no topo da tela
+    var banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:999;background:var(--green-bg);border:1px solid var(--green);color:var(--green);padding:10px 22px;border-radius:10px;font-family:var(--mono);font-size:0.82rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+    banner.textContent = '✅ Respostas salvas e enviadas ao dashboard!';
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.remove(); }, 4000);
+
+    return docRef.id;
+  } catch (err) {
+    console.error('Erro ao salvar no Firestore:', err);
+    var footer = document.querySelector('.footer-brand');
+    if (footer) {
+      footer.innerHTML = '❌ Falha ao enviar: ' + err.message + ' · verifique a conexão e tente novamente.';
+      footer.style.color = 'var(--red)';
+    }
+    throw err;
+  }
+};
 </script>
 </body>
 </html>
