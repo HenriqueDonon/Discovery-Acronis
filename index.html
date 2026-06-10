@@ -353,6 +353,26 @@
     .sum-row { border-color:#eee; }
     .sum-row .v, .summary-head p, .sum-row .k { color:#333; }
   }
+/* ── Recomendações de solução ── */
+.rec-wrap{ margin-bottom:28px; }
+.rec-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.rec-head h3{ font-size:1.06rem; color:var(--text); font-weight:700; }
+.rec-count{ font-family:'DM Mono',monospace; font-size:.7rem; color:var(--text2); background:var(--bg3); border:1px solid var(--border); padding:3px 9px; border-radius:20px; }
+.rec-group-title{ font-family:'DM Mono',monospace; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin:16px 0 8px; }
+.rec-card{ display:flex; gap:12px; background:var(--bg3); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:12px; padding:13px 15px; margin-bottom:9px; }
+.rec-card.p-ess{ border-left-color:var(--green); }
+.rec-card.p-rec{ border-left-color:var(--amber); }
+.rec-card.p-com{ border-left-color:var(--accent2); }
+.rec-ico{ font-size:1.2rem; line-height:1.35; flex-shrink:0; }
+.rec-body{ flex:1; min-width:0; }
+.rec-prod{ font-weight:700; color:var(--text); font-size:.92rem; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.rec-cat{ font-family:'DM Mono',monospace; font-size:.6rem; color:var(--text2); background:var(--bg4); padding:2px 7px; border-radius:6px; text-transform:uppercase; letter-spacing:.05em; }
+.rec-motivo{ font-size:.82rem; color:var(--text2); margin-top:5px; line-height:1.5; }
+.rec-meta{ display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; font-size:.73rem; color:var(--text3); }
+.rec-meta b{ color:var(--accent2); font-weight:600; }
+.rec-meta .rec-dep{ color:var(--amber); }
+.rec-foot{ font-size:.74rem; color:var(--text3); line-height:1.5; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+.rec-empty{ color:var(--text3); font-size:.85rem; padding:8px 0; }
 </style>
 </head>
 <body>
@@ -446,7 +466,7 @@
       <button class="btn btn-back" onclick="goto(SECTIONS.length-1)">← Revisar respostas</button>
       <span></span>
     </div>
-    <div class="footer-brand">Discovery <b>Acronis Cyber Protect</b> · Ativa Security · respostas enviadas automaticamente ao dashboard ao finalizar</div>
+    <div class="footer-brand">Discovery <b>Acronis Cyber Protect</b> · Ativa Security · documento gerado localmente, nada é enviado automaticamente</div>
   </div>
 
 </div>
@@ -764,15 +784,7 @@ function start(){ current=0; document.getElementById('progressWrap').style.displ
 function next(){
   if (!validate(current)) return;
   current++;
-  if (current >= SECTIONS.length) {
-    buildSummary();
-    // Salva automaticamente no Firestore ao finalizar
-    setTimeout(function(){
-      if (typeof window.salvarNoFirestore === 'function') {
-        window.salvarNoFirestore();
-      }
-    }, 800);
-  }
+  if (current >= SECTIONS.length) buildSummary();
   showStep();
 }
 function prev(){ current--; if(current<0) document.getElementById('progressWrap').style.display='none'; showStep(); }
@@ -825,6 +837,124 @@ function fmtVal(v){
   return v||'';
 }
 
+// ─────────────────────────────────────────────
+//  MOTOR DE RECOMENDAÇÃO (catálogo Acronis service-based)
+// ─────────────────────────────────────────────
+function _arr(id){ var v=state[id]; return Array.isArray(v)?v:(v?[v]:[]); }
+function _inc(id,opt){ return _arr(id).indexOf(opt)>-1; }
+function _n(id){ var n=parseInt(state[id],10); return isNaN(n)?0:n; }
+function _estServ(){ var n=_n('serv_qtd'); if(n) return {q:n,est:false}; var m={'1 a 5':3,'6 a 10':8,'Mais de 10':12}; return {q:m[state.serv_fisicos]||0,est:true}; }
+function _estEst(){ var n=_n('estacoes_qtd'); if(n) return {q:n,est:false}; var m={'Até 50':40,'51 a 100':75,'101 a 500':250,'Acima de 500':600}; return {q:m[state.estacoes]||0,est:true}; }
+function _seats(){ return {q:_n('colaboradores'),est:true}; }
+function _volGb(){ var t=parseFloat(state.volume_tb); if(!isNaN(t)&&t>0) return Math.round(t*1000); var m={'Até 1 TB':1000,'1 a 5 TB':3000,'5 a 10 TB':7500,'10 a 20 TB':15000,'Acima de 20 TB':25000}; return m[state.volume]||0; }
+function _qfmt(o){ if(!o||!o.q) return ''; return (o.est?'~':'')+o.q; }
+
+function recomendar(){
+  var R=[]; function add(o){ R.push(o); }
+  var temServ = _inc('escopo','Servidores físicos') || (state.serv_fisicos && state.serv_fisicos!=='Nenhum');
+  var temVM   = _inc('escopo','Máquinas virtuais') || state.virtualizado==='Sim';
+  var temEst  = _inc('escopo','Estações de trabalho');
+  var temM365 = _inc('escopo','Microsoft 365') || _inc('app_criticas','Microsoft 365') || _inc('app_criticas','Exchange');
+  var temGW   = _inc('escopo','Google Workspace');
+  var temNAS  = _inc('escopo','NAS');
+  var volGb=_volGb();
+  var endpoints=_estServ().q+_n('vms_qtd')+_estEst().q;
+
+  // BACKUP (essencial)
+  if(temServ) add({prio:'ess',ico:'🖥️',prod:'Backup — Physical Servers',cat:'Backup',modelo:'Per Workload',qtd:_qfmt(_estServ()),motivo:'Servidores físicos no escopo de proteção.'});
+  if(temVM){ var vm=_n('vms_qtd'); add({prio:'ess',ico:'🧩',prod:'Backup — Virtual Machines',cat:'Backup',modelo:'Per Workload',qtd:vm?(''+vm):'',motivo:'Ambiente virtualizado a ser protegido'+(_arr('hypervisor').length?(' ('+_arr('hypervisor').join(', ')+')'):'')+'.'}); }
+  if(temEst) add({prio:'ess',ico:'💻',prod:'Backup — Workstations',cat:'Backup',modelo:'Per Workload',qtd:_qfmt(_estEst()),motivo:'Estações de trabalho no escopo.'});
+  if(temNAS) add({prio:'ess',ico:'🗄️',prod:'Backup — Network Attached Storage',cat:'Backup',modelo:'Per Workload',motivo:'NAS indicado no escopo de proteção.'});
+  if(temM365) add({prio:'ess',ico:'📧',prod:'Backup — Microsoft 365 Seats',cat:'Backup',modelo:'Per Workload',qtd:_qfmt(_seats()),motivo:'Microsoft 365 / Exchange no escopo (Acronis Cloud Storage incluso).'});
+  if(temGW) add({prio:'ess',ico:'📨',prod:'Backup — Google Workspace Seats',cat:'Backup',modelo:'Per Workload',qtd:_qfmt(_seats()),motivo:'Google Workspace no escopo (Acronis Cloud Storage incluso).'});
+  if(state.moveis==='Sim'){ var md=_n('android_qtd')+_n('ios_qtd'); add({prio:'com',ico:'📱',prod:'Backup — Mobile Devices',cat:'Backup',modelo:'Per Workload',qtd:md?(''+md):'',motivo:'Dispositivos móveis corporativos informados.'}); }
+  if(_inc('escopo','Banco de Dados')||_inc('app_criticas','Banco de Dados SQL')||_inc('app_criticas','Banco de Dados Oracle')||_inc('app_criticas','Exchange'))
+    add({prio:'ess',ico:'🛢️',prod:'Backup com reconhecimento de aplicação',cat:'Backup',modelo:'incluso',motivo:'Bancos SQL/Oracle e Exchange são protegidos pelo backup de servidores/VMs com agente de aplicação — sem SKU adicional.'});
+
+  // ARMAZENAMENTO
+  if(_inc('destino','Nuvem Acronis')) add({prio:'ess',ico:'☁️',prod:'Acronis Cloud Storage (Datacenter Acronis)',cat:'Armazenamento',modelo:'Per GB',qtd:volGb?('~'+volGb.toLocaleString('pt-BR')+' GB'):'',motivo:'Backups destinados à Nuvem Acronis.',dep:'Requer Backup'});
+  if(_inc('destino','Azure')||_inc('destino','Google Cloud')) add({prio:'rec',ico:'☁️',prod:'Acronis Cloud Storage (Azure / Google)',cat:'Armazenamento',modelo:'Per GB',qtd:volGb?('~'+volGb.toLocaleString('pt-BR')+' GB'):'',motivo:'Destino em nuvem pública Azure/Google.',dep:'Requer Backup'});
+  if(_inc('destino','AWS')) add({prio:'rec',ico:'☁️',prod:'Direct Backup to Public Cloud',cat:'Armazenamento',modelo:'Per Workload',motivo:'Backup direcionado à AWS (nuvem pública).',dep:'Requer Backup'});
+  if(_inc('destino','Storage Local')||_inc('destino','NAS')||_inc('destino','Servidor dedicado')||_inc('destino','Ambiente Híbrido')) add({prio:'com',ico:'🏢',prod:'Customer Storage (armazenamento próprio)',cat:'Armazenamento',modelo:'cliente',motivo:'Parte dos backups em storage local/dedicado do próprio cliente.'});
+
+  // DISASTER RECOVERY (requer backup)
+  var rtoCurto=['Até 15 minutos','Até 1 hora','Até 4 horas'].indexOf(state.rto)>-1;
+  if(rtoCurto || state.dr_instantaneo==='Sim' || _inc('objetivos','Disaster Recovery')){
+    var mv=[]; if(state.rto) mv.push('RTO de '+state.rto.toLowerCase()); if(state.dr_instantaneo==='Sim') mv.push('recuperação instantânea desejada'); if(_inc('objetivos','Disaster Recovery')) mv.push('DR como objetivo do projeto');
+    add({prio:'rec',ico:'🚀',prod:'Disaster Recovery (Cloud Storage + Compute Points)',cat:'Disaster Recovery',modelo:'Per Workload + Per GB',motivo:'Continuidade do negócio: '+mv.join(', ')+'. Permite failover de servidores na nuvem Acronis.',dep:'Requer Backup'});
+  }
+
+  // RANSOMWARE / ENDPOINT SECURITY
+  if(state.ransomware==='Sim' || _inc('objetivos','Proteção contra ransomware'))
+    add({prio:'rec',ico:'🛡️',prod:'Endpoint Security — EDR (Detecção e Resposta)',cat:'Endpoint Security',modelo:'Per Workload',qtd:endpoints?('~'+endpoints):'',motivo:'Proteção contra ransomware é prioridade. O anti-ransomware (Active Protection) já vem no backup; o EDR adiciona detecção e resposta ativa nos endpoints.'});
+  if(_inc('regulatorio','HIPAA')||_inc('regulatorio','PCI-DSS')||_inc('app_criticas','Sistema Hospitalar')||_inc('app_criticas','Sistema Financeiro'))
+    add({prio:'com',ico:'🔎',prod:'Endpoint Security — MDR (SOC gerenciado 24/7)',cat:'Endpoint Security',modelo:'Per Workload',motivo:'Ambiente sensível (saúde/financeiro ou PCI/HIPAA) se beneficia de monitoramento e resposta gerenciados.',dep:'Requer EDR/XDR'});
+
+  // DLP
+  if(_inc('regulatorio','LGPD')||_inc('regulatorio','PCI-DSS')||_inc('regulatorio','HIPAA')){
+    var regs=_arr('regulatorio').filter(function(x){return ['LGPD','PCI-DSS','HIPAA'].indexOf(x)>-1;}).join('/');
+    add({prio:'com',ico:'🔒',prod:'Endpoint Security — Data Loss Prevention (DLP)',cat:'Endpoint Security',modelo:'Per Workload',qtd:endpoints?('~'+endpoints):'',motivo:'Exigências de '+regs+' pedem controle contra vazamento de dados.'});
+  }
+
+  // SaaS SECURITY (M365)
+  if(temM365){
+    add({prio:'rec',ico:'✉️',prod:'SaaS Security — Email Security',cat:'SaaS Security',modelo:'Per User',qtd:_qfmt(_seats()),motivo:'Microsoft 365 / e-mail no escopo: bloqueio de phishing e malware antes da caixa de entrada.'});
+    add({prio:'com',ico:'🧭',prod:'SaaS Security Posture Management (SSPM)',cat:'SaaS Security',modelo:'Per Workload',motivo:'Avalia e corrige configurações de segurança do Microsoft 365.'});
+  }
+
+  // EMAIL ARCHIVING
+  if(temM365 && (['1 ano','Mais de 1 ano'].indexOf(state.retencao)>-1 || _arr('regulatorio').length))
+    add({prio:'com',ico:'🗃️',prod:'Email Archiving (Microsoft 365)',cat:'Email Archiving',modelo:'Per User',motivo:'Retenção longa / exigência regulatória de e-mails — arquivamento imutável e pesquisável.'});
+
+  // SECURITY AWARENESS TRAINING
+  if(state.ransomware==='Sim' || _inc('objetivos','Proteção contra ransomware'))
+    add({prio:'com',ico:'🎓',prod:'Security Awareness Training',cat:'Treinamento',modelo:'Per User',qtd:_qfmt(_seats()),motivo:'Treinar usuários reduz o principal vetor de ransomware: o phishing.'});
+
+  // RMM
+  if(_inc('objetivos','Centralização do gerenciamento')||_inc('objetivos','Maior visibilidade dos ativos')||_inc('dificuldades','Falta de monitoramento'))
+    add({prio:'com',ico:'📊',prod:'RMM — Monitoramento e Gestão Remota',cat:'RMM',modelo:'Per Workload',qtd:endpoints?('~'+endpoints):'',motivo:'Centralização e visibilidade dos ativos: monitoramento e gestão remota da infraestrutura.'});
+
+  // INVENTÁRIO (incluso)
+  if(state.inv_software==='Sim'||state.inv_nao_autorizado==='Sim'||state.inv_conformidade==='Sim'||_inc('objetivos','Inventário automatizado'))
+    add({prio:'com',ico:'📋',prod:'Inventário de ativos & gestão de patches',cat:'Backup',modelo:'incluso',motivo:'Inventário de hardware/software, detecção de não autorizados e relatórios de conformidade já fazem parte do plano de proteção Acronis — sem SKU adicional.'});
+
+  // FILES SYNC & SHARE
+  if(_inc('escopo','Arquivos compartilhados'))
+    add({prio:'com',ico:'📁',prod:'Acronis Cyber Files Cloud',cat:'Files Sync & Share',modelo:'Per User / Per GB',motivo:'Arquivos compartilhados no escopo: sincronização e compartilhamento seguros (eSignature/Notarização opcionais).'});
+
+  // ARCHIVAL / ACI (alto volume)
+  var grande = state.volume==='Acima de 20 TB' || parseFloat(state.volume_tb)>20;
+  if(grande && state.retencao==='Mais de 1 ano')
+    add({prio:'com',ico:'❄️',prod:'Archival Storage (dados frios)',cat:'Armazenamento',modelo:'Per GB',motivo:'Alto volume com retenção de longo prazo: armazenamento de arquivamento de baixo custo.'});
+  if(grande && (_inc('destino','Storage Local')||_inc('destino','Servidor dedicado')||_inc('destino','Ambiente Híbrido')))
+    add({prio:'com',ico:'🧱',prod:'Acronis Cyber Infrastructure',cat:'Infraestrutura',modelo:'Per GB',motivo:'Alto volume em storage próprio: infraestrutura escalável (S3/iSCSI/NFS) on-premises.'});
+
+  return R;
+}
+
+function renderRecs(recs){
+  if(!recs.length) return '<div class="rec-empty">Responda às etapas anteriores para gerar recomendações.</div>';
+  var groups=[['ess','Essenciais','p-ess'],['rec','Recomendadas','p-rec'],['com','Complementares','p-com']];
+  var html='';
+  groups.forEach(function(gp){
+    var list=recs.filter(function(r){return r.prio===gp[0];});
+    if(!list.length) return;
+    html+='<div class="rec-group-title">'+gp[1]+'</div>';
+    list.forEach(function(r){
+      var meta=[];
+      if(r.qtd) meta.push('<span>Qtd.: <b>'+r.qtd+'</b></span>');
+      if(r.modelo) meta.push('<span>Cobrança: <b>'+r.modelo+'</b></span>');
+      if(r.dep) meta.push('<span class="rec-dep">⚠ '+r.dep+'</span>');
+      html+='<div class="rec-card '+gp[2]+'"><div class="rec-ico">'+r.ico+'</div><div class="rec-body">'
+          + '<div class="rec-prod">'+r.prod+'<span class="rec-cat">'+r.cat+'</span></div>'
+          + '<div class="rec-motivo">'+r.motivo+'</div>'
+          + (meta.length?'<div class="rec-meta">'+meta.join('')+'</div>':'')
+          + '</div></div>';
+    });
+  });
+  return html;
+}
+
 function buildSummary(){
   var html='';
   SECTIONS.forEach(function(sec){
@@ -838,7 +968,13 @@ function buildSummary(){
     });
     html += '<div class="sum-section"><div class="sum-section-title">'+sec.tag+' · '+sec.title+'</div>'+rows+'</div>';
   });
-  document.getElementById('summaryBody').innerHTML = html;
+  var recs = recomendar();
+  var recHtml = '<div class="rec-wrap">'
+    + '<div class="rec-head"><h3>🧩 Soluções Acronis recomendadas</h3><span class="rec-count">'+recs.length+' sugest'+(recs.length===1?'ão':'ões')+'</span></div>'
+    + renderRecs(recs)
+    + '<div class="rec-foot">Sugestões geradas automaticamente a partir das respostas, seguindo as regras de licenciamento Acronis (service-based). Quantidades marcadas com ~ são estimativas. O dimensionamento e a configuração finais são validados pelo time Ativa Security.</div>'
+    + '</div>';
+  document.getElementById('summaryBody').innerHTML = recHtml + html;
   var emp = state.razao || 'sua organização';
   document.getElementById('summarySub').textContent = 'Ambiente levantado para '+emp;
 }
@@ -858,6 +994,25 @@ function buildTextResumo(){
       L.push('  • '+f.label+': '+v+suffix);
     });
   });
+  L.push('');
+  L.push('SOLUÇÕES ACRONIS RECOMENDADAS');
+  L.push('-'.repeat(56));
+  var recs=recomendar();
+  if(!recs.length){ L.push('  (responda às etapas para gerar recomendações)'); }
+  else {
+    var gmap={ess:'ESSENCIAIS',rec:'RECOMENDADAS',com:'COMPLEMENTARES'};
+    ['ess','rec','com'].forEach(function(g){
+      var list=recs.filter(function(r){return r.prio===g;});
+      if(!list.length) return;
+      L.push('');
+      L.push('  ['+gmap[g]+']');
+      list.forEach(function(r){
+        var ex=[]; if(r.qtd) ex.push('qtd '+r.qtd); if(r.modelo) ex.push(r.modelo); if(r.dep) ex.push('('+r.dep+')');
+        L.push('  • '+r.prod+(ex.length?(' — '+ex.join(' · ')):''));
+        L.push('      '+r.motivo);
+      });
+    });
+  }
   L.push('');
   L.push('='.repeat(56));
   L.push('Gerado em '+new Date().toLocaleString('pt-BR'));
@@ -889,62 +1044,6 @@ function enviarEmail(){
 // ─────────────────────────────────────────────
 buildSteps();
 showStep();
-</script>
-
-<!-- ── FIREBASE ── -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyB6DF-tIMTpLk52fsGv70UJtxFbdhrX_tY",
-  authDomain: "discovery-acronis.firebaseapp.com",
-  projectId: "discovery-acronis",
-  storageBucket: "discovery-acronis.firebasestorage.app",
-  messagingSenderId: "460265914287",
-  appId: "1:460265914287:web:ff6578ba37f19fbff3f95a",
-  measurementId: "G-GFTVMXBF00"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Expõe a função de envio globalmente para ser chamada ao finalizar
-window.salvarNoFirestore = async function() {
-  try {
-    // Monta o payload flat com os campos do state global
-    const payload = Object.assign({}, state, {
-      criadoEm: serverTimestamp(),
-      _versao: '1.0'
-    });
-
-    const docRef = await addDoc(collection(db, "discoveries"), payload);
-
-    // Atualiza o rodapé para confirmar o envio
-    var footer = document.querySelector('.footer-brand');
-    if (footer) {
-      footer.innerHTML = '✅ Respostas enviadas ao dashboard com sucesso · <b>ID:</b> ' + docRef.id + ' · Ativa Security';
-      footer.style.color = 'var(--green)';
-    }
-
-    // Mostra banner de confirmação no topo da tela
-    var banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:999;background:var(--green-bg);border:1px solid var(--green);color:var(--green);padding:10px 22px;border-radius:10px;font-family:var(--mono);font-size:0.82rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
-    banner.textContent = '✅ Respostas salvas e enviadas ao dashboard!';
-    document.body.appendChild(banner);
-    setTimeout(function() { banner.remove(); }, 4000);
-
-    return docRef.id;
-  } catch (err) {
-    console.error('Erro ao salvar no Firestore:', err);
-    var footer = document.querySelector('.footer-brand');
-    if (footer) {
-      footer.innerHTML = '❌ Falha ao enviar: ' + err.message + ' · verifique a conexão e tente novamente.';
-      footer.style.color = 'var(--red)';
-    }
-    throw err;
-  }
-};
 </script>
 </body>
 </html>
