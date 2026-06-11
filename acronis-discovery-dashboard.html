@@ -639,6 +639,7 @@ input#busca:focus { border-color: #3b82f6; }
 .pc-row .nums .un{color:var(--text3);font-size:.68rem;margin-top:2px}
 .pc-tot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:2px solid var(--border2);font-weight:700;color:var(--text)}
 .pc-tot .big{font-family:'DM Mono',monospace;font-size:1.18rem;color:var(--accent2)}
+.pc-nota{font-size:.76rem;color:var(--amber);background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:8px;padding:8px 11px;margin:8px 0;line-height:1.45}
 .imp-ov{position:fixed;inset:0;background:rgba(3,6,15,.78);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
 .imp-ov.on{display:flex}
 .imp-card{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:470px;width:100%;padding:24px}
@@ -886,6 +887,8 @@ var MATCH = {
  'Acronis Cyber Infrastructure':'SCVAMSENS'
 };
 var SOLU = {'SPEAMSENS':'SBDAMSENS','SPFAMSENS':'SBDBMSENS','SPGAMSENS':'SBDCMSENS','SRJAMSENS':'SBDDMSENS','SQ8AMSENS':'SBDEMSENS'};
+var DCG2  = {'SRJAMSENS':'SRJ2MSENS','SQ8AMSENS':'SQ82MSENS','SPDAMSENS':'SPD2MSENS','SVEAMSENS':'SVE2MSENS','SHJAMSENS':'SHJ2MSENS'};
+var SOLUG2= {'SBDAMSENS':'SBDHMSENS','SBDBMSENS':'SBDIMSENS','SBDCMSENS':'SBDJMSENS','SBDDMSENS':'SBDKMSENS','SBDEMSENS':'SBDLMSENS'};
 
 function _bysku(sku){ for(var i=0;i<PRECOS.items.length;i++) if(PRECOS.items[i].sku===sku) return PRECOS.items[i]; return null; }
 function _toNum(s){ if(s==null||s==='') return null; s=(''+s).replace('~','').replace(/\s*GB/i,'').trim().replace(/\./g,'').replace(',','.'); var n=parseFloat(s); return isNaN(n)?null:n; }
@@ -960,22 +963,27 @@ function recomendarFor(R){
 
 // ----- precificação -----
 function precificar(recs, volGb, opt){
-  opt=opt||{}; var ti=(opt.tierIdx==null?0:opt.tierIdx); var margem=(opt.margem||0); var modelo=opt.modelo||'service';
-  var linhas=[], totalCusto=0, totalVenda=0;
+  opt=opt||{}; var ti=(opt.tierIdx==null?0:opt.tierIdx); var margem=(opt.margem||0); var modelo=opt.modelo||'service'; var dc=opt.dc||'G1';
+  var linhas=[], soma=0;
   recs.forEach(function(r){
     var base={prod:r.prod,cat:r.cat,ico:r.ico,motivo:r.motivo,prio:r.prio};
-    if(r.modelo==='incluso'){ linhas.push(Object.assign(base,{sku:'—',obs:'Incluso no plano',unit:0,qty:0,custo:0,venda:0})); return; }
-    var sku=MATCH[r.prod]; var it=sku?_bysku(sku):null;
-    if(!it){ linhas.push(Object.assign(base,{sku:sku||'—',obs:'sob consulta',unit:null,qty:null,custo:0,venda:0})); return; }
-    if(modelo==='solution' && r.prod.indexOf('Acronis Cloud Storage')===0){ linhas.push(Object.assign(base,{sku:it.sku,obs:'incluso no bundle BDR',unit:0,qty:0,custo:0,venda:0})); return; }
-    if(modelo==='solution' && SOLU[sku]){ var b=_bysku(SOLU[sku]); if(b) it=b; }
+    if(r.modelo==='incluso'){ linhas.push(Object.assign(base,{sku:'—',obs:'Incluso no plano',unit:0,qty:0,custo:0})); return; }
+    var sku=MATCH[r.prod];
+    if(!sku){ linhas.push(Object.assign(base,{sku:'—',obs:'sob consulta',unit:null,qty:null,custo:0})); return; }
+    if(modelo==='solution' && r.prod.indexOf('Acronis Cloud Storage')===0){ linhas.push(Object.assign(base,{sku:sku,obs:'incluso no bundle BDR',unit:0,qty:0,custo:0})); return; }
+    if(modelo==='solution' && SOLU[sku]){ sku=SOLU[sku]; if(dc==='G2'&&SOLUG2[sku]) sku=SOLUG2[sku]; }
+    else if(dc==='G2'&&DCG2[sku]){ sku=DCG2[sku]; }
+    var it=_bysku(sku);
+    if(!it){ linhas.push(Object.assign(base,{sku:sku,obs:'sob consulta',unit:null,qty:null,custo:0})); return; }
     var unit=it.prices[ti]; if(unit==null) unit=it.prices[0];
     var qty=_isStorage(it)?(_toNum(r.qtd)||volGb||0):(_toNum(r.qtd)||1);
-    var custo=unit*qty, venda=custo*(1+margem/100);
-    totalCusto+=custo; totalVenda+=venda;
-    linhas.push(Object.assign(base,{sku:it.sku,nome:it.name,unit:unit,qty:qty,custo:custo,venda:venda}));
+    var custo=unit*qty; soma+=custo;
+    linhas.push(Object.assign(base,{sku:it.sku,nome:it.name,unit:unit,qty:qty,custo:custo}));
   });
-  return {linhas:linhas,totalCusto:totalCusto,totalVenda:totalVenda,tier:PRECOS.tiers[ti],margem:margem,modelo:modelo};
+  var piso=(PRECOS.tiers[ti]||0);
+  var cobrado=Math.max(soma,piso);
+  var venda=cobrado*(1+margem/100);
+  return {linhas:linhas,soma:soma,piso:piso,cobrado:cobrado,venda:venda,anual:cobrado*12,vendaAnual:venda*12,margem:margem,modelo:modelo,pisoAplicado:soma<piso};
 }
 
 function blocoPrecoHtml(){
@@ -983,6 +991,7 @@ function blocoPrecoHtml(){
   return '<div class="modal-secao"><div class="modal-secao-title">Recomendação &amp; Precificação</div>'
    +'<div class="pc-ctrls">'
    +'<label>Commitment <select id="pcCommit" onchange="renderPreco()">'+opts+'</select></label>'
+   +'<label>Datacenter <select id="pcDc" onchange="renderPreco()"><option value="G1">G1</option><option value="G2">G2</option></select></label>'
    +'<label>Modelo <select id="pcModelo" onchange="renderPreco()"><option value="service">Service-based</option><option value="solution">Solution-based</option></select></label>'
    +'<label><input type="checkbox" id="pcPrecificar" onchange="renderPreco()"> Precificar</label>'
    +'<span id="pcMargemWrap" style="display:none">Margem <input id="pcMargem" type="number" min="0" value="100" onchange="renderPreco()" oninput="renderPreco()" style="width:70px"> %</span>'
@@ -992,14 +1001,15 @@ function blocoPrecoHtml(){
 function renderPreco(){
   if(!precoCtx||!PRECOS) return;
   var ti=+(document.getElementById('pcCommit').value||0);
+  var dcEl=document.getElementById('pcDc'); var dc=(dcEl&&dcEl.value==='G2')?'G2':'G1';
   var modelo=document.getElementById('pcModelo').value;
   var prec=document.getElementById('pcPrecificar').checked;
   var margem=prec?(parseFloat(document.getElementById('pcMargem').value)||0):0;
   document.getElementById('pcMargemWrap').style.display=prec?'':'none';
-  var resS=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'service'});
-  var resO=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'solution'});
+  var resS=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'service',dc:dc});
+  var resO=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'solution',dc:dc});
   var res=(modelo==='solution')?resO:resS;
-  var totS=margem?resS.totalVenda:resS.totalCusto, totO=margem?resO.totalVenda:resO.totalCusto;
+  var totS=margem?resS.venda:resS.cobrado, totO=margem?resO.venda:resO.cobrado;
   var sWin=totS<=totO;
   document.getElementById('pcCmp').innerHTML=
     '<div class="pc-chip'+(sWin?' win':'')+'"><div class="l">Service-based · '+(margem?'venda':'custo')+'/mês</div><div class="v">'+_brl(totS)+'</div></div>'+
@@ -1010,12 +1020,14 @@ function renderPreco(){
     html+='<div class="pc-grp">'+g[1]+'</div>';
     ls.forEach(function(l){
       var nums = l.obs ? '<span class="un">'+l.obs+'</span>'
-        : '<div class="custo">'+_brl(l.custo)+'</div>'+(margem?'<div class="venda">'+_brl(l.venda)+'</div>':'')
-          +'<div class="un">'+(l.qty?(l.qty.toLocaleString('pt-BR')+' × '+_brl(l.unit)):'')+'</div>';
+        : '<div class="custo">'+_brl(l.custo)+'</div><div class="un">'+(l.qty?(l.qty.toLocaleString('pt-BR')+' × '+_brl(l.unit)):'')+'</div>';
       html+='<div class="pc-row"><div class="ico">'+(l.ico||'•')+'</div><div class="main"><div class="prod">'+l.prod+'</div>'+(l.motivo?'<div class="mot">'+l.motivo+'</div>':'')+'</div><div class="nums">'+nums+'</div></div>';
     });
   });
-  html+='<div class="pc-tot"><span>Total '+(modelo==='solution'?'Solution-based':'Service-based')+' · mensal'+(margem?(' · margem '+margem+'%'):' · custo')+'</span><span class="big">'+_brl(margem?res.totalVenda:res.totalCusto)+'</span></div>';
+  html+='<div class="pc-tot"><span>Custo '+(modelo==='solution'?'Solution-based':'Service-based')+' · mensal</span><span class="big">'+_brl(res.cobrado)+'</span></div>';
+  if(res.pisoAplicado) html+='<div class="pc-nota">⚠ Uso calculado '+_brl(res.soma)+' abaixo do commitment — cobrança mínima de '+_brl(res.piso)+' aplicada.</div>';
+  if(margem) html+='<div class="pc-tot"><span>Venda · mensal · margem '+margem+'%</span><span class="big" style="color:var(--green)">'+_brl(res.venda)+'</span></div>';
+  html+='<div class="pc-tot" style="border-top:1px dashed var(--border);font-weight:600;color:var(--text2)"><span>Total anual ('+(margem?'venda':'custo')+')</span><span style="font-family:\'DM Mono\',monospace">'+_brl(margem?res.vendaAnual:res.anual)+'</span></div>';
   document.getElementById('precoTabela').innerHTML=html;
 }
 
