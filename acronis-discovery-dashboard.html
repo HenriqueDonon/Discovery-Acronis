@@ -637,8 +637,19 @@ input#busca:focus { border-color: #3b82f6; }
 .pc-row .nums .custo{color:var(--text);font-weight:700}
 .pc-row .nums .venda{color:var(--green);font-weight:700}
 .pc-row .nums .un{color:var(--text3);font-size:.68rem;margin-top:2px}
+.pc-cb{width:16px;height:16px;margin-top:1px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.pc-row.off{opacity:.4}
+.pc-selctl{display:flex;gap:6px;margin-left:auto}
+.pc-selctl button{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:7px;padding:5px 9px;font-size:.74rem;cursor:pointer}
 .pc-tot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:2px solid var(--border2);font-weight:700;color:var(--text)}
 .pc-tot .big{font-family:'DM Mono',monospace;font-size:1.18rem;color:var(--accent2)}
+.pc-hint{font-size:.76rem;color:var(--text3);margin-bottom:10px}
+.pc-cbslot{width:22px;flex-shrink:0;display:flex;align-items:flex-start;justify-content:center;padding-top:3px}
+.pc-cb{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.pc-row.off{opacity:.42}
+.pc-row.off .custo{text-decoration:line-through}
+.pc-mini{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:pointer}
+.pc-mini:hover{color:var(--text)}
 .pc-nota{font-size:.76rem;color:var(--amber);background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:8px;padding:8px 11px;margin:8px 0;line-height:1.45}
 .imp-ov{position:fixed;inset:0;background:rgba(3,6,15,.78);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
 .imp-ov.on{display:flex}
@@ -963,10 +974,11 @@ function recomendarFor(R){
 
 // ----- precificação -----
 function precificar(recs, volGb, opt){
-  opt=opt||{}; var ti=(opt.tierIdx==null?0:opt.tierIdx); var margem=(opt.margem||0); var modelo=opt.modelo||'service'; var dc=opt.dc||'G1';
+  opt=opt||{}; var ti=(opt.tierIdx==null?0:opt.tierIdx); var margem=(opt.margem||0); var modelo=opt.modelo||'service'; var dc=opt.dc||'G1'; var sel=opt.sel||{};
   var linhas=[], soma=0;
   recs.forEach(function(r){
-    var base={prod:r.prod,cat:r.cat,ico:r.ico,motivo:r.motivo,prio:r.prio};
+    var on=(sel[r.prod]!==false);
+    var base={prod:r.prod,cat:r.cat,ico:r.ico,motivo:r.motivo,prio:r.prio,selOn:on};
     if(r.modelo==='incluso'){ linhas.push(Object.assign(base,{sku:'—',obs:'Incluso no plano',unit:0,qty:0,custo:0})); return; }
     var sku=MATCH[r.prod];
     if(!sku){ linhas.push(Object.assign(base,{sku:'—',obs:'sob consulta',unit:null,qty:null,custo:0})); return; }
@@ -977,7 +989,7 @@ function precificar(recs, volGb, opt){
     if(!it){ linhas.push(Object.assign(base,{sku:sku,obs:'sob consulta',unit:null,qty:null,custo:0})); return; }
     var unit=it.prices[ti]; if(unit==null) unit=it.prices[0];
     var qty=_isStorage(it)?(_toNum(r.qtd)||volGb||0):(_toNum(r.qtd)||1);
-    var custo=unit*qty; soma+=custo;
+    var custo=unit*qty; if(on) soma+=custo;
     linhas.push(Object.assign(base,{sku:it.sku,nome:it.name,unit:unit,qty:qty,custo:custo}));
   });
   var piso=(PRECOS.tiers[ti]||0);
@@ -986,15 +998,20 @@ function precificar(recs, volGb, opt){
   return {linhas:linhas,soma:soma,piso:piso,cobrado:cobrado,venda:venda,anual:cobrado*12,vendaAnual:venda*12,margem:margem,modelo:modelo,pisoAplicado:soma<piso};
 }
 
+function togglePreco(enc){ if(!precoCtx) return; var p=decodeURIComponent(enc); if(!precoCtx.sel) precoCtx.sel={}; precoCtx.sel[p]=!(precoCtx.sel[p]!==false); renderPreco(); }
+function selPreco(v){ if(!precoCtx) return; precoCtx.sel={}; precoCtx.recs.forEach(function(r){ if(r.modelo!=='incluso') precoCtx.sel[r.prod]=v; }); renderPreco(); }
+
 function blocoPrecoHtml(){
   var opts=PRECOS.tiers.map(function(t,i){return '<option value="'+i+'">'+t.toLocaleString('pt-BR')+'</option>';}).join('');
   return '<div class="modal-secao"><div class="modal-secao-title">Recomendação &amp; Precificação</div>'
+   +'<div class="pc-hint">Marque os itens que entram na proposta — o total considera só os selecionados.</div>'
    +'<div class="pc-ctrls">'
    +'<label>Commitment <select id="pcCommit" onchange="renderPreco()">'+opts+'</select></label>'
    +'<label>Datacenter <select id="pcDc" onchange="renderPreco()"><option value="G1">G1</option><option value="G2">G2</option></select></label>'
    +'<label>Modelo <select id="pcModelo" onchange="renderPreco()"><option value="service">Service-based</option><option value="solution">Solution-based</option></select></label>'
    +'<label><input type="checkbox" id="pcPrecificar" onchange="renderPreco()"> Precificar</label>'
    +'<span id="pcMargemWrap" style="display:none">Margem <input id="pcMargem" type="number" min="0" value="100" onchange="renderPreco()" oninput="renderPreco()" style="width:70px"> %</span>'
+   +'<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="pc-mini" onclick="selPreco(true)">Marcar todos</button><button type="button" class="pc-mini" onclick="selPreco(false)">Limpar</button></span>'
    +'</div><div class="pc-cmp" id="pcCmp"></div><div id="precoTabela"></div></div>';
 }
 
@@ -1006,25 +1023,29 @@ function renderPreco(){
   var prec=document.getElementById('pcPrecificar').checked;
   var margem=prec?(parseFloat(document.getElementById('pcMargem').value)||0):0;
   document.getElementById('pcMargemWrap').style.display=prec?'':'none';
-  var resS=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'service',dc:dc});
-  var resO=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'solution',dc:dc});
+  var sel=precoCtx.sel||{};
+  var resS=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'service',dc:dc,sel:sel});
+  var resO=precificar(precoCtx.recs,precoCtx.volGb,{tierIdx:ti,margem:margem,modelo:'solution',dc:dc,sel:sel});
   var res=(modelo==='solution')?resO:resS;
   var totS=margem?resS.venda:resS.cobrado, totO=margem?resO.venda:resO.cobrado;
   var sWin=totS<=totO;
   document.getElementById('pcCmp').innerHTML=
     '<div class="pc-chip'+(sWin?' win':'')+'"><div class="l">Service-based · '+(margem?'venda':'custo')+'/mês</div><div class="v">'+_brl(totS)+'</div></div>'+
     '<div class="pc-chip'+(!sWin?' win':'')+'"><div class="l">Solution-based · '+(margem?'venda':'custo')+'/mês</div><div class="v">'+_brl(totO)+'</div></div>';
-  var groups=[['ess','Essenciais'],['rec','Recomendadas'],['com','Complementares']], html='';
+  var groups=[['ess','Essenciais'],['rec','Recomendadas'],['com','Complementares']], html='', nsel=0, npre=0;
   groups.forEach(function(g){
     var ls=res.linhas.filter(function(l){return l.prio===g[0];}); if(!ls.length) return;
     html+='<div class="pc-grp">'+g[1]+'</div>';
     ls.forEach(function(l){
+      var temPreco=!l.obs;
+      if(temPreco){ npre++; if(l.selOn) nsel++; }
+      var cb = temPreco ? '<input type="checkbox" class="pc-cb" '+(l.selOn?'checked':'')+' onchange="togglePreco(\''+encodeURIComponent(l.prod)+'\')">' : '';
       var nums = l.obs ? '<span class="un">'+l.obs+'</span>'
         : '<div class="custo">'+_brl(l.custo)+'</div><div class="un">'+(l.qty?(l.qty.toLocaleString('pt-BR')+' × '+_brl(l.unit)):'')+'</div>';
-      html+='<div class="pc-row"><div class="ico">'+(l.ico||'•')+'</div><div class="main"><div class="prod">'+l.prod+'</div>'+(l.motivo?'<div class="mot">'+l.motivo+'</div>':'')+'</div><div class="nums">'+nums+'</div></div>';
+      html+='<div class="pc-row'+((temPreco&&!l.selOn)?' off':'')+'"><span class="pc-cbslot">'+cb+'</span><div class="ico">'+(l.ico||'•')+'</div><div class="main"><div class="prod">'+l.prod+'</div>'+(l.motivo?'<div class="mot">'+l.motivo+'</div>':'')+'</div><div class="nums">'+nums+'</div></div>';
     });
   });
-  html+='<div class="pc-tot"><span>Custo '+(modelo==='solution'?'Solution-based':'Service-based')+' · mensal</span><span class="big">'+_brl(res.cobrado)+'</span></div>';
+  html+='<div class="pc-tot"><span>Custo '+(modelo==='solution'?'Solution-based':'Service-based')+' · mensal <span style="color:var(--text3);font-weight:400">('+nsel+'/'+npre+' itens)</span></span><span class="big">'+_brl(res.cobrado)+'</span></div>';
   if(res.pisoAplicado) html+='<div class="pc-nota">⚠ Uso calculado '+_brl(res.soma)+' abaixo do commitment — cobrança mínima de '+_brl(res.piso)+' aplicada.</div>';
   if(margem) html+='<div class="pc-tot"><span>Venda · mensal · margem '+margem+'%</span><span class="big" style="color:var(--green)">'+_brl(res.venda)+'</span></div>';
   html+='<div class="pc-tot" style="border-top:1px dashed var(--border);font-weight:600;color:var(--text2)"><span>Total anual ('+(margem?'venda':'custo')+')</span><span style="font-family:\'DM Mono\',monospace">'+_brl(margem?res.vendaAnual:res.anual)+'</span></div>';
@@ -1199,6 +1220,7 @@ function abrirModal(d){
   });
 
   precoCtx = { recs: recomendarFor(R), volGb: _volGbR(R) };
+  precoCtx.sel = {};
   document.getElementById("conteudoModal").innerHTML = scoreRow + respondente + blocoPrecoHtml() + secHtml;
   document.getElementById("modal").classList.add("aberto");
   renderPreco();
